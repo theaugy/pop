@@ -1,0 +1,25 @@
+
+div {
+   font-family: 'Lato', sans-serif;
+}
+
+div.overlay {
+   position: absolute;
+   z-index: 5;
+}
+
+div#artistText {
+   font-weight: 400
+}
+
+div#titleText {
+   font-weight: 200
+}
+
+div#albumText {
+   font-weight: 200
+}
+
+div#playerWrapper {
+   position: relative;
+}

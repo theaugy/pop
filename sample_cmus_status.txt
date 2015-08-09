@@ -1,0 +1,23 @@
+status paused
+file /Users/augy/Music/m/2015 Hud Dreems/15 Knxwledge - Faraway.mp3
+duration 57
+position 8
+tag artist Knxwledge
+tag album Hud Dreems
+tag title Faraway
+tag date 2015
+tag genre Hip-Hop
+tag tracknumber 15
+set aaa_mode album
+set continue true
+set play_library false
+set play_sorted false
+set replaygain disabled
+set replaygain_limit true
+set replaygain_preamp 0.000000
+set repeat false
+set repeat_current false
+set shuffle false
+set softvol false
+set vol_left -1
+set vol_right -1
