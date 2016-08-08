@@ -2,6 +2,8 @@ SongTable = function(tableId) {
    this.table = document.getElementById(tableId);
    this.Clear();
    this.enableButton = true;
+   this.historySize = 5;
+   this.previousSongs = [];
    // by default, the button says 'Enqueue' and adds the song to the current play queue
    this.buttonText = "Enqueue";
    this.onButtonClick = function(song) {
@@ -51,7 +53,7 @@ SongTable.prototype.makeTDEl = function (el) {
 
 // Pass a song data object, which should have:
 // artist, title, album, path
-SongTable.prototype.Add = function(s) {
+SongTable.prototype.add = function(s) {
    var tr = document.createElement("tr");
    if (this.enableButton) {
       tr.appendChild(this.makeTDEl(this.enqueueButton(s)));
@@ -71,9 +73,65 @@ SongTable.prototype.AddAll = function(songs) {
    if (songs === null) {
       console.log("Null songs passed to AddAll()");
    }
-   for (i = 0; i < songs.length; ++i) {
-      this.Add(songs[i]);
+
+   this.previousSongs.push(songs);
+   if (this.previousSongs.length > this.historySize) {
+      this.previousSongs.shift();
    }
+
+   this.currentSongs = songs;
+
+   this.addSongs(songs);
+}
+
+SongTable.prototype.addSongs = function(songs) {
+   for (i = 0; i < songs.length; ++i) {
+      this.add(songs[i]);
+   }
+}
+
+SongTable.prototype.Back = function() {
+   if (this.currentSongs === null) {
+      console.log("No current songs; can't go back");
+      return;
+   }
+   var p = this.previousSongs;
+   for (i = 0; i < p.length; ++i) {
+      if (p[i] == this.currentSongs) {
+         if (i > 0) {
+            this.Clear();
+            this.currentSongs = p[i-1];
+            this.addSongs(p[i-1]);
+            return;
+         } else {
+            console.log("beginning of history");
+            return;
+         }
+      }
+   }
+   console.log("ERROR: current song list is not in history; can't go back");
+}
+
+SongTable.prototype.Forward = function() {
+   if (this.currentSongs === null) {
+      console.log("No current songs; can't go forward");
+      return;
+   }
+   var p = this.previousSongs;
+   for (i = 0; i < p.length; ++i) {
+      if (p[i] == this.currentSongs) {
+         if (i + 1 < p.length) {
+            this.Clear();
+            this.currentSongs = p[i+1];
+            this.addSongs(p[i+1]);
+            return;
+         } else {
+            console.log("end of history");
+            return;
+         }
+      }
+   }
+   console.log("ERROR: current song list is not in history; can't go forward");
 }
 
 SongTable.prototype.enqueueButton = function (song) {

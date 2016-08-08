@@ -123,8 +123,9 @@ class CmrRequest (BaseHTTPRequestHandler):
        if (artistre_match):
            return s.doArtistStartQuery(artistre_match.group(1))
 
+       # TODO: shell-style escaping
        paths = subprocess.check_output([s.beet, "ls",
-           "--format=$path", query]);
+           "--format=$path"] + re.split('\s+', query))
        paths = paths.split("\n")
        print "Query got back %d paths" % (len(paths))
        jo = {}

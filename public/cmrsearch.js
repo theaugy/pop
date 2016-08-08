@@ -9,17 +9,11 @@ function refreshResults() {
    emptyResultList();
 
    var songs = Results["songs"];
-   for (var i = 0; i < songs.length; ++i) {
-      addToResultList(songs[i]);
-   }
+   ResultsSongTable.AddAll(songs);
 }
 
 function getResultList() {
    return document.getElementById("resultList");
-}
-
-function addToResultList(song) {
-   ResultsSongTable.Add(song);
 }
 
 function emptyResultList() {
@@ -179,6 +173,14 @@ function loadPlaylistClick(evt) {
    });
 }
 
+function backClick(evt) {
+   ResultsSongTable.Back();
+}
+
+function forwardClick(evt) {
+   ResultsSongTable.Forward();
+}
+
 function makePlaylistOption(name) {
    var opt = document.createElement("button");
    opt.appendChild(document.createTextNode(name));
@@ -207,6 +209,8 @@ function cmrsearchInit() {
    document.getElementById("monthadded").onclick=monthAddedClick;
    document.getElementById("releaseyear").onclick=releaseYearClick;
    document.getElementById("loadplaylist").onclick=loadPlaylistClick;
+   document.getElementById("back").onclick=backClick;
+   document.getElementById("forward").onclick=forwardClick;
    plainOlPlayerInit();
    cmus_queue(newQueueStatus);
    toolsInit();
