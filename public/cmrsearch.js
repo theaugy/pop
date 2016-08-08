@@ -195,6 +195,7 @@ function resizeResultPadding(evt)
 
 function cmrsearchInit() {
    ResultsSongTable = new SongTable("resultList");
+   ResultsSongTable.historySize = 10; // can probably get away with even more...
    emptyResultList();
    document.getElementById("queryInput").addEventListener("keyup", function(evt) {
       evt.preventDefault();

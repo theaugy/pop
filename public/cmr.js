@@ -243,6 +243,7 @@ function getPlainOlQueue() {
             getCmr("dequeue?" + makeArgs(["path", song["path"]]), newQueueStatus);
          }
       }
+      QueueSongTable.historySize = 1; // no use for old queue states
    }
    return QueueSongTable;
 }
