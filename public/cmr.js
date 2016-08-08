@@ -248,6 +248,37 @@ function getPlainOlQueue() {
    return QueueSongTable;
 }
 
+function getQueueButtons() {
+   return document.getElementById("plainOlQButtons");
+}
+
+function plainOlQueueInit() {
+   var q = getPlainOlQueue();
+   var buttons = getQueueButtons();
+   if (buttons !== null) {
+      var b = document.createElement("button");
+      b.appendChild(document.createTextNode("refresh"));
+      b.onclick=function(evt) {
+         cmus_queue(newQueueStatus);
+      }
+      buttons.appendChild(b);
+
+      var s = document.createElement("button");
+      s.appendChild(document.createTextNode("shutter"));
+      s.onclick= (function(queue) {
+         var q = queue.table;
+         return function(evt) {
+         if (q.style.display === "none") {
+            q.style.display = "";
+         } else {
+            q.style.display = "none";
+         }
+      }}) (q);
+      buttons.appendChild(s);
+   }
+   cmus_queue(newQueueStatus);
+}
+
 function getQueueStatus() {
    return QueueStatus;
 }

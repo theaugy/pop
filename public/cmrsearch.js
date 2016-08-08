@@ -213,7 +213,7 @@ function cmrsearchInit() {
    document.getElementById("back").onclick=backClick;
    document.getElementById("forward").onclick=forwardClick;
    plainOlPlayerInit();
-   cmus_queue(newQueueStatus);
+   plainOlQueueInit();
    toolsInit();
 
    TrackChanged.addCallback(function() {
