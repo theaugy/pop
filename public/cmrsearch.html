@@ -1,0 +1,41 @@
+<html>
+   <script src="picker.js"></script>
+   <script src="cmr.js"></script>
+   <script src="cmrlist.js"></script>
+   <script src="songtable.js"></script>
+   <script src="cmrsearch.js"></script>
+
+   <head>
+      <link rel="stylesheet" type="text/css" href="cmr.css">
+      <link href='http://fonts.googleapis.com/css?family=Lato:100,300,400,700,900' rel='stylesheet' type='text/css'>
+   </head>
+
+   <body>
+      <div id="status"</div>
+      <div id="tools"></div>
+      <div id="plainOlPlayer"></div>
+      <div id="plainOlQueueWrapper">
+         <table id="plainOlQueue"></table>
+      </div>
+      <input id="queryInput" type="text" name="query">
+      <div id="submitWrapper">
+         <button type="button" id="searchbtn">search</button>
+         <button type="button" id="artistbtn">artist...</button>
+         <button type="button" id="randombtn">random</button>
+         <button type="button" id="dateadded">date added...</button>
+         <button type="button" id="monthadded">month added...</button>
+         <button type="button" id="releaseyear">release year...</button>
+         <button type="button" id="loadplaylist">load playlist...</button>
+      </div>
+      <br/>
+      <div id="resultWrapper">
+         <table id="resultList" class="cmrlist">
+         </table>
+         <div id="resultPadding"></div>
+      </div>
+   </body>
+
+   <script src="cmrsearchinit.js"></script>
+</html>
+
+

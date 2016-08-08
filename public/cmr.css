@@ -1,3 +1,8 @@
+button.letter {
+   width: 23px;
+   margin: 0px 0px 0px 0px;
+   padding: 0px 0px 0px 0px;
+};
 
 div {
    font-family: 'Lato', sans-serif;
@@ -8,6 +13,21 @@ div.overlay {
    z-index: 5;
 }
 
+div.letterContainer {
+   background: white;
+   display: inline;
+}
+
+div.letterSelector {
+   background: white;
+   border: 3px solid black;
+   width: 300px;
+}
+
+div#status {
+   height: 10px;
+}
+
 div#artistText {
    font-weight: 400
 }
@@ -16,10 +36,68 @@ div#titleText {
    font-weight: 200
 }
 
-div#albumText {
-   font-weight: 200
+div#albumText { font-weight: 200 }
+
+div#plainOlPlayer {
+   background: white;
+   position:fixed;
+   bottom:0;
+   width:50%;
+   border: 5px solid black;
+}
+
+div#plainOlQueueWrapper {
+   max-height: 400px;
+   overflow-y: scroll;
+   position:fixed;
+   bottom:0;
+   left: 50%;
+   width:50%;
+   border: 5px solid black;
+}
+
+table#plainOlQueue {
+   background: white;
+   /*
+   position:fixed;
+   bottom:0;
+   left: 50%;
+   width:50%;
+   */
 }
 
 div#playerWrapper {
    position: relative;
 }
+
+li#song {
+   font-weight: 200
+}
+
+li#artist {
+   font-weight: 200
+}
+
+li#album {
+   font-weight: 200
+}
+
+ol#crmlist {
+}
+
+li.currentlyPlaying {
+   background: #ffe555;
+}
+
+table {
+   border: 1px solid black;
+}
+
+th, td {
+   border-bottom: 1px solid black;
+}
+
+tr:nth-child(even) {
+   background-color: #f2f2f2;
+}
+

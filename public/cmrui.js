@@ -502,3 +502,12 @@ function drawPrevButton (playerCanvas, playerCtx)
          triangleWidth,
          triangleHeight);
 }
+
+function cmrinit () {
+   document.getElementById ("playerui").setAttribute ("width", window.innerWidth);
+   document.getElementById ("playerui").setAttribute ("height", window.innerHeight);
+   document.getElementById ("nextButton").addEventListener ('click', nextClick);
+   document.getElementById ("prevButton").addEventListener ('click', prevClick);
+   document.getElementById ("playButton").addEventListener ('click', playPauseClick);
+   NewPlayerStatus.addCallback(drawUi);
+}
