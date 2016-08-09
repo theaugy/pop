@@ -48,6 +48,7 @@ div#plainOlPlayer {
 
 div#plainOlQueueWrapper {
    max-height: 400px;
+   background: grey;
    overflow-y: scroll;
    position:fixed;
    bottom:0;

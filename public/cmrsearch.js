@@ -197,6 +197,7 @@ function cmrsearchInit() {
    ResultsSongTable = new SongTable("resultList");
    ResultsSongTable.historySize = 10; // can probably get away with even more...
    emptyResultList();
+   ResultsSongTable.SetCookieStore("CmrResults");
    document.getElementById("queryInput").addEventListener("keyup", function(evt) {
       evt.preventDefault();
       if (evt.keyCode === 13) {

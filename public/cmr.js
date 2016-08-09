@@ -155,6 +155,7 @@ function updatePlainOlPlayer() {
    p.appendChild(makeCmusButton("Previous", cmus_prev));
    p.appendChild(makeCmusButton("fav", cmus_fav));
    p.appendChild(makeCmusButton("add to playlist...", addToPlaylistClick));
+   document.title = s["title"] + " - " + s["artist"] + s["path"];
 }
 
 function trackChanged(prev, cur) {
@@ -329,6 +330,24 @@ function whilePlayingStatus(statstr) {
    }
 }
 
+function keyupHandler(evt) {
+   var focused = document.activeElement;
+   if (focused.nodeName === "TEXTAREA" ||
+       focused.nodeName === "INPUT")
+   {
+   } else {
+      if (evt.which == 67) { // letter c
+         cmus_pause();
+      } else if (evt.which == 66) { // letter b
+         cmus_next();
+      } else if (evt.which == 191 && evt.shiftKey) {
+         alert("shortcuts:\n" +
+               "c: play/pause\n" +
+               "b: next");
+      }
+   }
+}
+
 function plainOlPlayerInit() {
    NowPlaying.addCallback(function() {
       if (StatusTimer == null ) {
@@ -342,6 +361,7 @@ function plainOlPlayerInit() {
       }
    });
    cmus_status(newPlayerStatus);
+   document.addEventListener("keyup", keyupHandler, false);
 }
 
 function playlistsLoaded(playlists, x, y, onPlClick) {

@@ -13,6 +13,7 @@ SongTable = function(tableId) {
                );
       }
    };
+   this.cookieStore = "";
 }
 
 SongTable.prototype.makeHeaderRow = function() {
@@ -79,6 +80,11 @@ SongTable.prototype.AddAll = function(songs) {
       this.previousSongs.shift();
    }
 
+   if (this.cookieStore !== "") {
+      var data = JSON.stringify(this.previousSongs);
+      window.localStorage.setItem(this.cookieStore, data);
+   }
+
    this.currentSongs = songs;
 
    this.addSongs(songs);
@@ -139,4 +145,20 @@ SongTable.prototype.enqueueButton = function (song) {
    b.appendChild(document.createTextNode(this.buttonText));
    b.onclick = this.onButtonClick(song);
    return b;
+}
+
+SongTable.prototype.SetCookieStore = function (cname) {
+   this.cookieStore = cname;
+   var prev = window.localStorage.getItem(cname);
+   var tmp = JSON.parse(prev);
+   if (tmp) {
+      this.previousSongs = tmp;
+      if (this.previousSongs.length > 0) {
+         this.Clear();
+         this.currentSongs = this.previousSongs[this.previousSongs.length-1];
+         this.addSongs(this.currentSongs);
+      } else {
+         console.log("Zero length: " + prev);
+      }
+   }
 }
