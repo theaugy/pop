@@ -1,5 +1,6 @@
 SongTable = function(tableId) {
    this.table = document.getElementById(tableId);
+   this.customColumns = [];
    this.Clear();
    this.enableButton = true;
    this.historySize = 5;
@@ -23,6 +24,10 @@ SongTable.prototype.makeHeaderRow = function() {
    h.appendChild(this.makeTH("title"));
    h.appendChild(this.makeTH("album"));
    h.appendChild(this.makeTH("path"));
+   var st = this;
+   this.customColumns.forEach(function(cc) {
+      h.appendChild(st.makeTH(cc.name));
+   });
    return h;
 }
 
@@ -65,6 +70,14 @@ SongTable.prototype.add = function(s) {
    tr.appendChild(this.makeTD(s["title"]));
    tr.appendChild(this.makeTD(s["album"]));
    tr.appendChild(this.makeTD(s["path"]));
+   var st = this;
+   this.customColumns.forEach(function(cc) {
+      if (cc.IsButton()) {
+         tr.appendChild(st.makeTDEl(cc.GetButton(s)));
+      } else {
+         tr.appendChild(st.makeTD(cc.GetText(s)));
+      }
+   });
    tr.cmr_song = s;
    this.table.appendChild(tr);
    return tr;
@@ -161,4 +174,57 @@ SongTable.prototype.SetCookieStore = function (cname) {
          console.log("Zero length: " + prev);
       }
    }
+}
+
+SongTable.prototype.AddCustomColumn = function (cc) {
+   if (cc !== null) {
+      var tmp = this.currentSongs;
+      this.customColumns.push(cc);
+      this.Clear();
+      if (tmp) {
+         this.addSongs(tmp);
+      }
+   }
+}
+
+CustomColumn = function (name) {
+   this.name = name;
+   this.text = null;
+   this.button = null;
+}
+
+CustomColumn.prototype.Text = function(textcb) {
+   this.textcb = textcb;
+}
+
+CustomColumn.prototype.Button = function(cb) {
+   this.buttoncb = cb;
+}
+
+CustomColumn.prototype.GetText = function(song) {
+   if (this.textcb !== null) {
+      return this.textcb(song);
+   }
+   return "";
+}
+
+CustomColumn.prototype.IsButton = function() {
+   return this.buttoncb !== null;
+}
+
+// calls GetText for you
+CustomColumn.prototype.GetButton = function(song) {
+   if (this.buttoncb !== null) {
+      var b = document.createElement("button");
+      b.appendChild(document.createTextNode(this.GetText(song)));
+      var cb = this.buttoncb;
+      b.onclick = (function(s) { 
+         var thesong = s;
+         return function (evt) {
+            cb(thesong, evt);
+         }
+      })(song);
+      return b;
+   }
+   return null;
 }

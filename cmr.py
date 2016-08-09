@@ -19,6 +19,7 @@ class CmrRequest (BaseHTTPRequestHandler):
    listPlaylists = "../private/bash-scripts/list-playlists.sh"
    getPlaylist = "../private/bash-scripts/get-playlist.sh"
    dequeuePath = "../private/bash-scripts/dequeue-path.sh"
+   topqueuePath = "../private/bash-scripts/topqueue-path.sh"
    currentStatus = None
 
    # issues command and returns immediately
@@ -274,6 +275,14 @@ class CmrRequest (BaseHTTPRequestHandler):
                if name == "path":
                    print "dequeueing %s" % (value)
                    subprocess.check_output([s.dequeuePath, value]);
+                   s.wfile.write(s.cmus_queue())
+           return True
+       elif parsed.path.startswith("/cmus/topqueue"):
+           query = urlparse.parse_qsl(parsed.query)
+           for name,value in query:
+               if name == "path":
+                   print "topqueueing %s" % (value)
+                   subprocess.check_output([s.topqueuePath, value]);
                    s.wfile.write(s.cmus_queue())
            return True
        return False

@@ -245,6 +245,13 @@ function getPlainOlQueue() {
          }
       }
       QueueSongTable.historySize = 1; // no use for old queue states
+
+      var topButton = new CustomColumn("PlayNext");
+      topButton.Text(function(song) { return "PlayNext"; });
+      topButton.Button(function(song) {
+         getCmr("topqueue?" + makeArgs(["path", song["path"]]), newQueueStatus);
+      });
+      QueueSongTable.AddCustomColumn(topButton);
    }
    return QueueSongTable;
 }
