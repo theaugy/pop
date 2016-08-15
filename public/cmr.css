@@ -1,12 +1,25 @@
 * {
-   font-family: Sans-Serif;
+   font-family: Lato;
   }
+
+body {
+   background-color: #2b2b2b;
+   color: #4ddb9f;
+   margin: 0px 0px 0px 0px;
+   padding: 0px 0px 0px 0px;
+}
+
+button {
+   background-color: #2b2b2b;
+   color: #4ddb9f;
+   border: none;
+}
 
 button.letter {
    width: 23px;
    margin: 0px 0px 0px 0px;
    padding: 0px 0px 0px 0px;
-};
+}; 
 
 div {
    font-family: 'Lato', sans-serif;
@@ -18,12 +31,10 @@ div.overlay {
 }
 
 div.letterContainer {
-   background: white;
    display: inline;
 }
 
 div.letterSelector {
-   background: white;
    border: 3px solid black;
    width: 300px;
 }
@@ -43,7 +54,6 @@ div#titleText {
 div#albumText { font-weight: 200 }
 
 div#plainOlPlayer {
-   background: white;
    border: 5px solid black;
 }
 
@@ -56,7 +66,7 @@ div#popStatusText {
 }
 
 div#statusWrapper {
-   background: white;
+   background: #2b2b2b;
    position:fixed;
    bottom:0;
    left: 50%;
@@ -65,13 +75,11 @@ div#statusWrapper {
 
 div#plainOlQueueWrapper {
    max-height: 400px;
-   background: grey;
    overflow-y: scroll;
    border: 5px solid black;
 }
 
 table#plainOlQueue {
-   background: white;
 }
 
 div#playerWrapper {
@@ -105,7 +113,18 @@ th, td {
    border-bottom: 0px solid black;
 }
 
+tr {
+   background-color: #2b2b2b;
+   color: #4ddb9f;
+}
+/*
 tr:nth-child(even) {
-   background-color: #f2f2f2;
+   background-color: #2b2b2b;
+   color: #4ddb9f;
+}
+tr:nth-child(odd) {
+   color: #2b2b2b;
+   background-color: #4ddb9f;
 }
 
+*/

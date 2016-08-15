@@ -54,7 +54,7 @@ function getCmr (msg, callback)
       if (this.readyState === 4)
       {
          if (this.status === 200) {
-            document.getElementById("status").style.background = "white";
+            document.getElementById("status").style.background = "";
             cb (this.responseText);
          } else {
          }
@@ -392,7 +392,9 @@ function whilePlaying() {
       // rather than hammer the the backend every second, just add 1 second.
       s["position"] = (pos + 1) + '';
       StatusTimer = setTimeout(whilePlaying, 1000);
+      // need to get PoP using NewPlayerStatus
       updatePlainOlPlayer();
+      NewPlayerStatus.trigger();
    }
 }
 

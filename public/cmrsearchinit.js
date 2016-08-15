@@ -1,2 +1,3 @@
 
 cmrsearchInit();
+cmrinit();

@@ -251,5 +251,21 @@ function cmrsearchInit() {
       }
       ResultsSongTable.SetSongs(flatHistory);
    }));
+
+   window.onscroll = function(evt) {
+      var ui = document.getElementById("playerui");
+      var vis = false;
+      if (ui) {
+         vis = window.pageYOffset > (ui.clientHeight * 3 / 4);
+      } else {
+         vis = true; // no fancy UI. always need the player.
+      }
+      var sw = document.getElementById("statusWrapper");
+      if (vis) {
+         sw.style.display = "";
+      } else {
+         sw.style.display = "none";
+      }
+   };
 }
 

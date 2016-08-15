@@ -39,6 +39,9 @@ SongTable.prototype.addDefaultColumns = function(columns) {
    if (columns.includes("Path")) {
       this.path = new CustomColumn("Path");
       this.path.Text(function(song) { return song['path']; });
+      this.path.Polish(function(td) {
+         td.style.fontSize = "smaller";
+      });
       this.AddCustomColumn(this.path);
    }
 }
@@ -84,10 +87,15 @@ SongTable.prototype.add = function(s) {
    var tr = document.createElement("tr");
    var st = this;
    this.customColumns.forEach(function(cc) {
+      var child = null;
       if (cc.IsButton()) {
-         tr.appendChild(st.makeTDEl(cc.GetButton(s)));
+         child = st.makeTDEl(cc.GetButton(s));
       } else {
-         tr.appendChild(st.makeTD(cc.GetText(s)));
+         child = st.makeTD(cc.GetText(s));
+      }
+      tr.appendChild(child);
+      if (cc.polishcb) {
+         cc.polishcb(child);
       }
    });
    tr.cmr_song = s;
@@ -213,6 +221,7 @@ CustomColumn = function (name) {
    this.text = null;
    this.button = null;
    this.buttoncb = null;
+   this.polishcb = null;
 }
 
 CustomColumn.prototype.Text = function(textcb) {
@@ -221,6 +230,10 @@ CustomColumn.prototype.Text = function(textcb) {
 
 CustomColumn.prototype.Button = function(cb) {
    this.buttoncb = cb;
+}
+
+CustomColumn.prototype.Polish = function(cb) {
+   this.polishcb = cb;
 }
 
 CustomColumn.prototype.GetText = function(song) {

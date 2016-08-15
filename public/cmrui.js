@@ -504,7 +504,7 @@ function drawPrevButton (playerCanvas, playerCtx)
 }
 
 function cmrinit () {
-   document.getElementById ("playerui").setAttribute ("width", window.innerWidth);
+   document.getElementById ("playerui").setAttribute ("width", window.innerWidth - 35);
    document.getElementById ("playerui").setAttribute ("height", window.innerHeight);
    document.getElementById ("nextButton").addEventListener ('click', nextClick);
    document.getElementById ("prevButton").addEventListener ('click', prevClick);
