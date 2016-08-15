@@ -44,8 +44,6 @@ div#albumText { font-weight: 200 }
 
 div#plainOlPlayer {
    background: white;
-   /*position:fixed;
-   bottom:0;*/
    border: 5px solid black;
 }
 
@@ -74,12 +72,6 @@ div#plainOlQueueWrapper {
 
 table#plainOlQueue {
    background: white;
-   /*
-   position:fixed;
-   bottom:0;
-   left: 50%;
-   width:50%;
-   */
 }
 
 div#playerWrapper {
@@ -110,7 +102,7 @@ table {
 }
 
 th, td {
-   border-bottom: 1px solid black;
+   border-bottom: 0px solid black;
 }
 
 tr:nth-child(even) {
