@@ -180,7 +180,24 @@ function makePlaylistOption(name) {
 function cmrsearchInit() {
    ResultsSongTable = new SongTable("resultList");
    ResultsSongTable.historySize = 10; // can probably get away with even more...
+
+   ResultsSongTable.album.Button(function(song, evt) {
+      var match = song['album'];
+      var foundMatch = false;
+      for (var i = 0; i < ResultsSongTable.currentSongs.length; ++i) {
+         if (!foundMatch && ResultsSongTable.currentSongs[i] === song) {
+            foundMatch = true; // start at the clicked song
+         }
+         if (foundMatch && ResultsSongTable.currentSongs[i]['album'] === match) {
+            // don't bother doing callbacks for the queue here; we'll do it once at the end
+            cmus_enqueue(ResultsSongTable.currentSongs[i]['path'], null);
+         }
+      }
+      cmus_queue(newQueueStatus);
+   });
+
    emptyResultList();
+
    ResultsSongTable.SetCookieStore("CmrResults");
    document.getElementById("queryInput").addEventListener("keyup", function(evt) {
       evt.preventDefault();
@@ -188,6 +205,8 @@ function cmrsearchInit() {
          querySubmit();
       }
    });
+
+
    document.getElementById("searchbtn").onclick=querySubmit;
    document.getElementById("artistbtn").onclick=artistClick;
    document.getElementById("randombtn").onclick=randomClick;

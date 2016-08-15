@@ -1,6 +1,11 @@
 SongTable = function(tableId) {
    this.table = document.getElementById(tableId);
    this.customColumns = [];
+
+   // NOTE: this adds members for custom columns named:
+   // artist, title, album, path
+   this.addDefaultColumns();
+
    this.Clear();
    this.enableButton = true;
    this.historySize = 5;
@@ -8,22 +13,29 @@ SongTable = function(tableId) {
    // by default, the button says 'Enqueue' and adds the song to the current play queue
    this.buttonText = "Enqueue";
    this.onButtonClick = function(song) {
-      return function() {
-         sendCmr("enqueue?" + makeArgs(["path", song["path"]]),
-               function (statstr) { newPlayerStatus(statstr); cmus_queue(newQueueStatus); }
-               );
-      }
-   };
+      return function() { cmus_enqueue(song['path'], newQueueStatus); }
+   }
    this.cookieStore = "";
+}
+
+SongTable.prototype.addDefaultColumns = function() {
+   this.artist = new CustomColumn("Artist");
+   this.artist.Text(function(song) { return song["artist"]; });
+   this.AddCustomColumn(this.artist);
+   this.title = new CustomColumn("Title");
+   this.title.Text(function(song) { return song["title"]; });
+   this.AddCustomColumn(this.title);
+   this.album = new CustomColumn("Album");
+   this.album.Text(function(song) { return song['album']; });
+   this.AddCustomColumn(this.album);
+   this.path = new CustomColumn("Path");
+   this.path.Text(function(song) { return song['path']; });
+   this.AddCustomColumn(this.path);
 }
 
 SongTable.prototype.makeHeaderRow = function() {
    var h = document.createElement("tr");
    h.appendChild(this.makeTH("enqueue"));
-   h.appendChild(this.makeTH("artist"));
-   h.appendChild(this.makeTH("title"));
-   h.appendChild(this.makeTH("album"));
-   h.appendChild(this.makeTH("path"));
    var st = this;
    this.customColumns.forEach(function(cc) {
       h.appendChild(st.makeTH(cc.name));
@@ -66,10 +78,6 @@ SongTable.prototype.add = function(s) {
    } else {
       tr.appendChild(this.makeTD(""));
    }
-   tr.appendChild(this.makeTD(s["artist"]));
-   tr.appendChild(this.makeTD(s["title"]));
-   tr.appendChild(this.makeTD(s["album"]));
-   tr.appendChild(this.makeTD(s["path"]));
    var st = this;
    this.customColumns.forEach(function(cc) {
       if (cc.IsButton()) {
@@ -200,6 +208,7 @@ CustomColumn = function (name) {
    this.name = name;
    this.text = null;
    this.button = null;
+   this.buttoncb = null;
 }
 
 CustomColumn.prototype.Text = function(textcb) {

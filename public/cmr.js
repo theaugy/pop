@@ -77,6 +77,16 @@ function cmus_fav () { getCmr("fav", function(){}); }
 function cmus_f1m(callback) { getCmr("f1m", callback); }
 function cmus_b1m(callback) { getCmr("b1m", callback); }
 function cmus_seekto(num, callback) { getCmr("seekto?" + makeArgs(["s", num]), callback); }
+function cmus_enqueue(path, callback) {
+   sendCmr("enqueue?" + makeArgs(["path", path]),
+         function (statstr) {
+            newPlayerStatus(statstr);
+            if (callback !== null) {
+               cmus_queue(callback);
+            }
+         }
+         );
+}
 
 // get current playlist
 function cmus_playlist (callback) { getCmr("playlist", callback); }
