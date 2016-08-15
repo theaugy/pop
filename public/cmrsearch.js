@@ -177,23 +177,36 @@ function makePlaylistOption(name) {
    return opt;
 }
 
+function enqueueMatching(field, value, clickedSong) {
+   var foundMatch = false;
+   if (clickedSong === null) foundMatch = true;
+   for (var i = 0; i < ResultsSongTable.currentSongs.length; ++i) {
+      if (!foundMatch && ResultsSongTable.currentSongs[i] === clickedSong) {
+         foundMatch = true; // start at the clicked song
+      }
+      if (foundMatch && ResultsSongTable.currentSongs[i][field] === value) {
+         // don't bother doing callbacks for the queue here; we'll do it once at the end
+         cmus_enqueue(ResultsSongTable.currentSongs[i]['path'], null);
+      } else if (foundMatch) {
+         break; // first non-match after the original breaks
+      }
+   }
+   cmus_queue(newQueueStatus);
+}
+
 function cmrsearchInit() {
    ResultsSongTable = new SongTable("resultList");
    ResultsSongTable.historySize = 10; // can probably get away with even more...
+   ResultsSongTable.enableButton = false;
 
    ResultsSongTable.album.Button(function(song, evt) {
-      var match = song['album'];
-      var foundMatch = false;
-      for (var i = 0; i < ResultsSongTable.currentSongs.length; ++i) {
-         if (!foundMatch && ResultsSongTable.currentSongs[i] === song) {
-            foundMatch = true; // start at the clicked song
-         }
-         if (foundMatch && ResultsSongTable.currentSongs[i]['album'] === match) {
-            // don't bother doing callbacks for the queue here; we'll do it once at the end
-            cmus_enqueue(ResultsSongTable.currentSongs[i]['path'], null);
-         }
-      }
-      cmus_queue(newQueueStatus);
+      enqueueMatching('album', song['album'], song);
+   });
+   ResultsSongTable.artist.Button(function(song, evt) {
+      enqueueMatching('artist', song['artist'], song);
+   });
+   ResultsSongTable.title.Button(function(song, evt) {
+      cmus_enqueue(song['path'], newQueueStatus);
    });
 
    emptyResultList();

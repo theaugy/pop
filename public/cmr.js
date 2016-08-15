@@ -152,15 +152,15 @@ function getPlainOlPlayerSongTable() {
       t.historySize = 100;
       t.SetCookieStore("PoPNowPlaying");
 
-      var fm = new CustomColumn("+1m");
-      fm.Text(function(){ return "+1m"; });
-      fm.Button(function(song) { cmus_f1m(newPlayerStatus); });
-      t.AddCustomColumn(fm);
-
       var bm = new CustomColumn("-1m");
       bm.Text(function(){ return "-1m"; });
       bm.Button(function(song) { cmus_b1m(newPlayerStatus); });
       t.AddCustomColumn(bm);
+
+      var fm = new CustomColumn("+1m");
+      fm.Text(function(){ return "+1m"; });
+      fm.Button(function(song) { cmus_f1m(newPlayerStatus); });
+      t.AddCustomColumn(fm);
 
       var g2 = new CustomColumn("goto");
       g2.Text(function(){ return "goto..."; });
