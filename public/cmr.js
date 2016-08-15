@@ -447,6 +447,9 @@ function plainOlPlayerInit() {
    btns.appendChild(makeCmusButton("Previous", cmus_prev));
    btns.appendChild(makeCmusButton("fav", cmus_fav));
    btns.appendChild(makeCmusButton("add to playlist...", addToPlaylistClick));
+   btns.appendChild(makeCmusButton("TOP", function() {
+      window.scrollBy(0, 0 - window.pageYOffset);
+   }));
    // NOTE: btns also modified by cmrsearchinit
 
    cmus_status(newPlayerStatus);
