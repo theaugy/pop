@@ -148,23 +148,23 @@ var PlainOlPlayerSongTable = null;
 
 function getPlainOlPlayerSongTable() {
    if (PlainOlPlayerSongTable === null) {
-      PlainOlPlayerSongTable = new SongTable("popTable");
+      PlainOlPlayerSongTable = new SongTable("popTable", "Artist|Title|Album");
       var t = PlainOlPlayerSongTable; // big ol' name
       t.enableButton = false;
       t.historySize = 100;
       t.SetCookieStore("PoPNowPlaying");
 
-      var bm = new CustomColumn("-1m");
+      var bm = new CustomColumn("");
       bm.Text(function(){ return "-1m"; });
       bm.Button(function(song) { cmus_b1m(newPlayerStatus); });
       t.AddCustomColumn(bm);
 
-      var fm = new CustomColumn("+1m");
+      var fm = new CustomColumn("");
       fm.Text(function(){ return "+1m"; });
       fm.Button(function(song) { cmus_f1m(newPlayerStatus); });
       t.AddCustomColumn(fm);
 
-      var g2 = new CustomColumn("goto");
+      var g2 = new CustomColumn("");
       g2.Text(function(){ return "goto..."; });
       g2.Button(function(song) {
          var pos = window.prompt("Position in seconds:", "0");
@@ -175,7 +175,7 @@ function getPlainOlPlayerSongTable() {
       });
       t.AddCustomColumn(g2);
 
-      var next = new CustomColumn("Next");
+      var next = new CustomColumn("");
       next.Text(function() { return "Next"; });
       next.Button(function(song) { cmus_next(); });
       t.AddCustomColumn(next);
@@ -306,19 +306,19 @@ var QueueSongTable = null;
 
 function getPlainOlQueue() {
    if (QueueSongTable === null) {
-      QueueSongTable = new SongTable("plainOlQueue");
+      QueueSongTable = new SongTable("plainOlQueue", "Artist|Title|Album");
       QueueSongTable.enableButton = false;
       QueueSongTable.historySize = 1; // no use for old queue states
 
-      var topButton = new CustomColumn("PlayNext");
-      topButton.Text(function(song) { return "PlayNext"; });
+      var topButton = new CustomColumn("");
+      topButton.Text(function(song) { return "^"; });
       topButton.Button(function(song) {
          getCmr("topqueue?" + makeArgs(["path", song["path"]]), newQueueStatus);
       });
       QueueSongTable.AddCustomColumn(topButton);
 
-      var remove = new CustomColumn("Remove");
-      remove.Text(function() { return "Remove"; });
+      var remove = new CustomColumn("");
+      remove.Text(function() { return "-"; });
       remove.Button(function(song) {
          cmus_dequeue(song['path'], newQueueStatus);
       });

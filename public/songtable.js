@@ -1,13 +1,12 @@
-SongTable = function(tableId) {
+SongTable = function(tableId, defaultColumns) {
    this.table = document.getElementById(tableId);
    this.customColumns = [];
 
    // NOTE: this adds members for custom columns named:
    // artist, title, album, path
-   this.addDefaultColumns();
+   this.addDefaultColumns(defaultColumns);
 
    this.Clear();
-   this.enableButton = true;
    this.historySize = 5;
    this.previousSongs = [];
    // by default, the button says 'Enqueue' and adds the song to the current play queue
@@ -18,24 +17,34 @@ SongTable = function(tableId) {
    this.cookieStore = "";
 }
 
-SongTable.prototype.addDefaultColumns = function() {
-   this.artist = new CustomColumn("Artist");
-   this.artist.Text(function(song) { return song["artist"]; });
-   this.AddCustomColumn(this.artist);
-   this.title = new CustomColumn("Title");
-   this.title.Text(function(song) { return song["title"]; });
-   this.AddCustomColumn(this.title);
-   this.album = new CustomColumn("Album");
-   this.album.Text(function(song) { return song['album']; });
-   this.AddCustomColumn(this.album);
-   this.path = new CustomColumn("Path");
-   this.path.Text(function(song) { return song['path']; });
-   this.AddCustomColumn(this.path);
+SongTable.prototype.addDefaultColumns = function(columns) {
+   if (!columns) {
+      columns = "Artist|Title|Album|Path";
+   }
+   if (columns.includes("Artist")) {
+      this.artist = new CustomColumn("Artist");
+      this.artist.Text(function(song) { return song["artist"]; });
+      this.AddCustomColumn(this.artist);
+   }
+   if (columns.includes("Title")) {
+      this.title = new CustomColumn("Title");
+      this.title.Text(function(song) { return song["title"]; });
+      this.AddCustomColumn(this.title);
+   }
+   if (columns.includes("Album")) {
+      this.album = new CustomColumn("Album");
+      this.album.Text(function(song) { return song['album']; });
+      this.AddCustomColumn(this.album);
+   }
+   if (columns.includes("Path")) {
+      this.path = new CustomColumn("Path");
+      this.path.Text(function(song) { return song['path']; });
+      this.AddCustomColumn(this.path);
+   }
 }
 
 SongTable.prototype.makeHeaderRow = function() {
    var h = document.createElement("tr");
-   h.appendChild(this.makeTH("enqueue"));
    var st = this;
    this.customColumns.forEach(function(cc) {
       h.appendChild(st.makeTH(cc.name));
@@ -73,11 +82,6 @@ SongTable.prototype.makeTDEl = function (el) {
 // artist, title, album, path
 SongTable.prototype.add = function(s) {
    var tr = document.createElement("tr");
-   if (this.enableButton) {
-      tr.appendChild(this.makeTDEl(this.enqueueButton(s)));
-   } else {
-      tr.appendChild(this.makeTD(""));
-   }
    var st = this;
    this.customColumns.forEach(function(cc) {
       if (cc.IsButton()) {
