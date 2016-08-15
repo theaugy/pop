@@ -171,14 +171,6 @@ function loadPlaylistClick(evt) {
    });
 }
 
-function backClick(evt) {
-   ResultsSongTable.Back();
-}
-
-function forwardClick(evt) {
-   ResultsSongTable.Forward();
-}
-
 function makePlaylistOption(name) {
    var opt = document.createElement("button");
    opt.appendChild(document.createTextNode(name));
@@ -203,8 +195,8 @@ function cmrsearchInit() {
    document.getElementById("monthadded").onclick=monthAddedClick;
    document.getElementById("releaseyear").onclick=releaseYearClick;
    document.getElementById("loadplaylist").onclick=loadPlaylistClick;
-   document.getElementById("back").onclick=backClick;
-   document.getElementById("forward").onclick=forwardClick;
+   document.getElementById("back").onclick=function () { ResultsSongTable.Back(); };
+   document.getElementById("forward").onclick=function() { ResultsSongTable.Forward(); };
    plainOlPlayerInit();
    plainOlQueueInit();
    toolsInit();
