@@ -150,8 +150,7 @@ function getPlainOlPlayerSongTable() {
    if (PlainOlPlayerSongTable === null) {
       PlainOlPlayerSongTable = new SongTable("popTable");
       var t = PlainOlPlayerSongTable; // big ol' name
-      t.buttonText = "Next";
-      t.onButtonClick = function() { return cmus_next; }
+      t.enableButton = false;
       t.historySize = 100;
       t.SetCookieStore("PoPNowPlaying");
 
@@ -175,6 +174,11 @@ function getPlainOlPlayerSongTable() {
          }
       });
       t.AddCustomColumn(g2);
+
+      var next = new CustomColumn("Next");
+      next.Text(function() { return "Next"; });
+      next.Button(function(song) { cmus_next(); });
+      t.AddCustomColumn(next);
    }
    return PlainOlPlayerSongTable;
 }
