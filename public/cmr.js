@@ -87,6 +87,9 @@ function cmus_enqueue(path, callback) {
          }
          );
 }
+function cmus_dequeue(path, callback) {
+   getCmr("dequeue?" + makeArgs(["path", path]), callback);
+}
 
 // get current playlist
 function cmus_playlist (callback) { getCmr("playlist", callback); }
@@ -300,12 +303,7 @@ var QueueSongTable = null;
 function getPlainOlQueue() {
    if (QueueSongTable === null) {
       QueueSongTable = new SongTable("plainOlQueue");
-      QueueSongTable.buttonText = "Remove";
-      QueueSongTable.onButtonClick = function(song) {
-         return function() {
-            getCmr("dequeue?" + makeArgs(["path", song["path"]]), newQueueStatus);
-         }
-      }
+      QueueSongTable.enableButton = false;
       QueueSongTable.historySize = 1; // no use for old queue states
 
       var topButton = new CustomColumn("PlayNext");
@@ -314,6 +312,13 @@ function getPlainOlQueue() {
          getCmr("topqueue?" + makeArgs(["path", song["path"]]), newQueueStatus);
       });
       QueueSongTable.AddCustomColumn(topButton);
+
+      var remove = new CustomColumn("Remove");
+      remove.Text(function() { return "Remove"; });
+      remove.Button(function(song) {
+         cmus_dequeue(song['path'], newQueueStatus);
+      });
+      QueueSongTable.AddCustomColumn(remove);
    }
    return QueueSongTable;
 }
