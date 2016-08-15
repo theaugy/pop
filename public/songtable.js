@@ -88,19 +88,28 @@ SongTable.prototype.AddAll = function(songs) {
       console.log("Null songs passed to AddAll()");
    }
 
-   this.previousSongs.push(songs);
-   if (this.previousSongs.length > this.historySize) {
-      this.previousSongs.shift();
-   }
+   // TODO: This is messy. The notion of a 'current song list'
+   // is better encapsulated by SetSongs() than AddAll()
+   if (songs) { // don't store null/empty songs in history
+      this.previousSongs.push(songs);
+      if (this.previousSongs.length > this.historySize) {
+         this.previousSongs.shift();
+      }
 
-   if (this.cookieStore !== "") {
-      var data = JSON.stringify(this.previousSongs);
-      window.localStorage.setItem(this.cookieStore, data);
+      if (this.cookieStore !== "") {
+         var data = JSON.stringify(this.previousSongs);
+         window.localStorage.setItem(this.cookieStore, data);
+      }
    }
 
    this.currentSongs = songs;
 
    this.addSongs(songs);
+}
+
+SongTable.prototype.SetSongs = function(songs) {
+   this.Clear();
+   this.AddAll(songs);
 }
 
 SongTable.prototype.addSongs = function(songs) {

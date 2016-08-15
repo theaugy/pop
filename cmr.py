@@ -61,6 +61,12 @@ class CmrRequest (BaseHTTPRequestHandler):
    def cmus_queue(self):
       ret = self.parseCmusPlaylist("Queue", self._cmrGet(["-C", "save -q -"]));
       return ret
+   def cmus_f1m(self):
+      self._cmrGet(["-C", "seek +1m"]);
+      return self.cmus_status()
+   def cmus_b1m(self):
+      self._cmrGet(["-C", "seek -1m"])
+      return self.cmus_status()
 
    def tryCmusStatus(self, jo, key, line, regex, cap = 1):
       m = re.match ("^" + regex, line)
@@ -217,10 +223,9 @@ class CmrRequest (BaseHTTPRequestHandler):
    def do_POST(self):
       print "uuuhhhh..."
 
-   def do_GET (s):
-      #print "GET " + s.path
+   def do_GET_private(s):
       if s.tryAsRoot():
-         return
+          return
       if s.tryAsSearch():
           return
       if s.tryAsRandom():
@@ -234,12 +239,19 @@ class CmrRequest (BaseHTTPRequestHandler):
       if s.tryAsTool():
           return
       if s.tryAsCmusCommand():
-         return
+          return
+      if s.tryAsSeekto():
+          return
       if s.tryAsAsset():
-         return
+          return
       else:
          print "404'ing: %s" % (s.path)
          s.send_response (404)
+
+   def do_GET (s):
+      print s.log_date_time_string() + " GET " + s.path
+      s.do_GET_private();
+      print s.log_date_time_string() + " ...done with " + s.path
 
    def writeFileToResponse (s, fname):
       f = open (fname, "r")
@@ -255,7 +267,7 @@ class CmrRequest (BaseHTTPRequestHandler):
          s.send_header ("Content type", "text/html")
          s.end_headers ()
          # get ze file
-         s.writeFileToResponse ("cmr.html")
+         s.writeFileToResponse ("cmrsearch.html")
          return True
       return False
 
@@ -286,6 +298,18 @@ class CmrRequest (BaseHTTPRequestHandler):
                    s.wfile.write(s.cmus_queue())
            return True
        return False
+
+   def tryAsSeekto(s):
+       parsed = urlparse.urlparse(s.path);
+       if parsed.path.startswith("/cmus/seekto"):
+           query = urlparse.parse_qsl(parsed.query)
+           for name,value in query:
+               if name == "s":
+                   s._cmrGet(["-C", "seek " + value + "s"])
+                   s.wfile.write(s.cmus_status());
+           return True
+       return False
+
 
    def tryAsRandom(s):
        parsed = urlparse.urlparse(s.path);
@@ -388,6 +412,11 @@ class CmrRequest (BaseHTTPRequestHandler):
               s.run_script("fixchromecast.sh")
       return True
 
+   def isBinary(s, ext):
+      if ext == "jpg" or ext == "jpeg" or ext == "png":
+          return True
+      return False
+
    def tryAsAsset (s):
       # don't allow '..' in the path
       doubler = re.compile ("\\.\\.");
@@ -398,8 +427,7 @@ class CmrRequest (BaseHTTPRequestHandler):
 
       favi = re.compile(".*favicon.*")
       if favi.match(s.path):
-          print "Don't have favicon!"
-          s.send_response(404)
+          s.writeFileToResponse("pop2.png");
           return True
 
       assetr = re.compile ("^/(\w+)+\\.(\w+)$")
@@ -408,8 +436,13 @@ class CmrRequest (BaseHTTPRequestHandler):
          name = match.group (1)
          ext = match.group (2)
 
-         # todo: check that extension is OK
-         s.writeFileToResponse (name + "." + ext)
+         if s.isBinary(ext):
+             f = open(name + "." + ext, "rb");
+             s.wfile.write(f.read());
+             f.close();
+         else:
+             # todo: check that extension is OK
+             s.writeFileToResponse (name + "." + ext)
          return True
       return False
 

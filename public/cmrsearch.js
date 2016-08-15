@@ -6,10 +6,8 @@ function refreshResults() {
       console.log("Can't refresh null Results");
       return;
    }
-   emptyResultList();
-
    var songs = Results["songs"];
-   ResultsSongTable.AddAll(songs);
+   ResultsSongTable.SetSongs(songs);
 }
 
 function getResultList() {
@@ -187,12 +185,6 @@ function makePlaylistOption(name) {
    return opt;
 }
 
-function resizeResultPadding(evt)
-{
-   var padding = document.getElementById("resultPadding");
-   padding.style.height = getPlainOlPlayer().clientHeight + 15;
-}
-
 function cmrsearchInit() {
    ResultsSongTable = new SongTable("resultList");
    ResultsSongTable.historySize = 10; // can probably get away with even more...
@@ -221,7 +213,19 @@ function cmrsearchInit() {
       cmus_queue(newQueueStatus);
    });
 
-   getPlainOlPlayer().addEventListener("resize", resizeResultPadding);
-   resizeResultPadding();
-   setTimeout(resizeResultPadding, 5000);
+   var btns = document.getElementById("popButtons");
+   btns.appendChild(makeCmusButton("get history", function(evt) {
+      var st = PlainOlPlayerSongTable;
+      if (st === null) return;
+      var h = st.previousSongs;
+      var flatHistory = []; // we translate a list-of-lists into a flat list
+      for (var i = 0; i < h.length; ++i) {
+         var list = h[i];
+         for (var j = 0; j < list.length; ++j) {
+            flatHistory.push(list[j]);
+         }
+      }
+      ResultsSongTable.SetSongs(flatHistory);
+   }));
 }
+

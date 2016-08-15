@@ -74,6 +74,9 @@ function cmus_next () { sendCmr ("next"); }
 function cmus_prev () { sendCmr ("prev"); }
 function cmus_status (callback) { getCmr ("status", callback); }
 function cmus_fav () { getCmr("fav", function(){}); }
+function cmus_f1m(callback) { getCmr("f1m", callback); }
+function cmus_b1m(callback) { getCmr("b1m", callback); }
+function cmus_seekto(num, callback) { getCmr("seekto?" + makeArgs(["s", num]), callback); }
 
 // get current playlist
 function cmus_playlist (callback) { getCmr("playlist", callback); }
@@ -128,8 +131,39 @@ function clearChildren(el) {
    }
 }
 
-function getPlainOlPlayer() {
-   return document.getElementById("plainOlPlayer");
+var PlainOlPlayerSongTable = null;
+
+function getPlainOlPlayerSongTable() {
+   if (PlainOlPlayerSongTable === null) {
+      PlainOlPlayerSongTable = new SongTable("popTable");
+      var t = PlainOlPlayerSongTable; // big ol' name
+      t.buttonText = "Next";
+      t.onButtonClick = function() { return cmus_next; }
+      t.historySize = 100;
+      t.SetCookieStore("PoPNowPlaying");
+
+      var fm = new CustomColumn("+1m");
+      fm.Text(function(){ return "+1m"; });
+      fm.Button(function(song) { cmus_f1m(newPlayerStatus); });
+      t.AddCustomColumn(fm);
+
+      var bm = new CustomColumn("-1m");
+      bm.Text(function(){ return "-1m"; });
+      bm.Button(function(song) { cmus_b1m(newPlayerStatus); });
+      t.AddCustomColumn(bm);
+
+      var g2 = new CustomColumn("goto");
+      g2.Text(function(){ return "goto..."; });
+      g2.Button(function(song) {
+         var pos = window.prompt("Position in seconds:", "0");
+         if (pos != null)
+         {
+            cmus_seekto(pos, newPlayerStatus);
+         }
+      });
+      t.AddCustomColumn(g2);
+   }
+   return PlainOlPlayerSongTable;
 }
 
 function makeCmusButton(text, fn) {
@@ -139,23 +173,41 @@ function makeCmusButton(text, fn) {
    return b;
 }
 
+function isCurrentlyPlaying(song) {
+   var t = getPlainOlPlayerSongTable();
+   var current = t.currentSongs;
+   if (current == null && song == null) {
+      return true;
+   }
+   if (current == null) {
+      return false;
+   }
+   if (current.length === 0) {
+      return false;
+   }
+   if (current[0]["path"] === song["path"]) {
+      return true;
+   }
+   return false;
+}
+
 function updatePlainOlPlayer() {
    var s = getPlayerStatus();
    if (s === null) {
       return;
    }
-   var p = getPlainOlPlayer();
-   clearChildren(p);
-   var pre = document.createElement("pre");
-   pre.appendChild(document.createTextNode("PlayerStatus " + JSON.stringify(s, null, 3)));
-   p.appendChild(pre);
-   p.appendChild(makeCmusButton("Play", cmus_play));
-   p.appendChild(makeCmusButton("Pause", cmus_pause));
-   p.appendChild(makeCmusButton("Next", cmus_next));
-   p.appendChild(makeCmusButton("Previous", cmus_prev));
-   p.appendChild(makeCmusButton("fav", cmus_fav));
-   p.appendChild(makeCmusButton("add to playlist...", addToPlaylistClick));
-   document.title = s["title"] + " - " + s["artist"] + s["path"];
+   if (!isCurrentlyPlaying(s)) {
+      // if you just SetSongs() blindly, you'll
+      // fill up the player's history with the same song.
+      var t = getPlainOlPlayerSongTable();
+      t.SetSongs([s]);
+   }
+   var statusText = document.getElementById("popStatusText");
+   clearChildren(statusText);
+   statusText.appendChild(
+         document.createTextNode(
+            s["status"] + " " + s["position"] + "/" + s["duration"]));
+   document.title = "PoP: " + s["title"] + " - " + s["artist"] + s["path"];
 }
 
 function trackChanged(prev, cur) {
@@ -300,8 +352,7 @@ function updatePlainOlQueue() {
    if (q === null) {
       return;
    }
-   q.Clear();
-   q.AddAll(s["songs"]);
+   q.SetSongs(s["songs"]);
 }
 
 function newQueueStatus(statStr) {
@@ -367,6 +418,16 @@ function plainOlPlayerInit() {
          StatusTimer = null;
       }
    });
+
+   var btns = document.getElementById("popButtons");
+   btns.appendChild(makeCmusButton("Play", cmus_play));
+   btns.appendChild(makeCmusButton("Pause", cmus_pause));
+   btns.appendChild(makeCmusButton("Next", cmus_next));
+   btns.appendChild(makeCmusButton("Previous", cmus_prev));
+   btns.appendChild(makeCmusButton("fav", cmus_fav));
+   btns.appendChild(makeCmusButton("add to playlist...", addToPlaylistClick));
+   // NOTE: btns also modified by cmrsearchinit
+
    cmus_status(newPlayerStatus);
    document.addEventListener("keyup", keyupHandler, false);
 }

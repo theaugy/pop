@@ -6,17 +6,26 @@
    <script src="cmrsearch.js"></script>
 
    <head>
-      <link rel="stylesheet" type="text/css" href="cmr.css">
+      <link rel="stylesheet" type="text/css" href="cmr.css" profile="http://www.w3.org/2005/10/profile">
+      <!-- Not used
       <link href='http://fonts.googleapis.com/css?family=Lato:100,300,400,700,900' rel='stylesheet' type='text/css'>
+      -->
+      <link rel="icon" type="image/jpg" href="pop2.png">
    </head>
 
    <body>
       <div id="status"</div>
       <div id="tools"></div>
-      <div id="plainOlPlayer"></div>
-      <div id="plainOlQueueWrapper">
-         <div id="plainOlQButtons"></div>
-         <table id="plainOlQueue"></table>
+      <div id="statusWrapper">
+         <div>
+            <table id="popTable"></table>
+            <div id="popButtons"></div>
+            <div id="popStatusText"></div>
+         </div>
+         <div id="plainOlQueueWrapper">
+            <div id="plainOlQButtons"></div>
+            <table id="plainOlQueue"></table>
+         </div>
       </div>
       <input id="queryInput" type="text" name="query">
       <div id="submitWrapper">
@@ -32,9 +41,7 @@
       </div>
       <br/>
       <div id="resultWrapper">
-         <table id="resultList" class="cmrlist">
-         </table>
-         <div id="resultPadding"></div>
+         <table id="resultList" class="cmrlist"></table>
       </div>
    </body>
 

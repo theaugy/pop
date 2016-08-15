@@ -40,9 +40,24 @@ div#albumText { font-weight: 200 }
 
 div#plainOlPlayer {
    background: white;
+   /*position:fixed;
+   bottom:0;*/
+   border: 5px solid black;
+}
+
+div#popButtons {
+   display: inline
+}
+
+div#popStatusText {
+   display: inline
+}
+
+div#statusWrapper {
+   background: white;
    position:fixed;
    bottom:0;
-   width:50%;
+   left: 50%;
    border: 5px solid black;
 }
 
@@ -50,10 +65,6 @@ div#plainOlQueueWrapper {
    max-height: 400px;
    background: grey;
    overflow-y: scroll;
-   position:fixed;
-   bottom:0;
-   left: 50%;
-   width:50%;
    border: 5px solid black;
 }
 
