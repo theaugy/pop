@@ -150,8 +150,11 @@ function getPlainOlPlayerSongTable() {
    if (PlainOlPlayerSongTable === null) {
       PlainOlPlayerSongTable = new SongTable("popTable", "Artist|Title|Album");
       var t = PlainOlPlayerSongTable; // big ol' name
-      t.enableButton = false;
       t.historySize = 100;
+      // the default column titles are kinda noisy
+      t.artist.name = "";
+      t.title.name = "";
+      t.album.name = "";
       t.SetCookieStore("PoPNowPlaying");
 
       var bm = new CustomColumn("");
@@ -307,8 +310,10 @@ var QueueSongTable = null;
 function getPlainOlQueue() {
    if (QueueSongTable === null) {
       QueueSongTable = new SongTable("plainOlQueue", "Artist|Title|Album");
-      QueueSongTable.enableButton = false;
       QueueSongTable.historySize = 1; // no use for old queue states
+      QueueSongTable.artist.name = "";
+      QueueSongTable.title.name = "";
+      QueueSongTable.album.name = "";
 
       var topButton = new CustomColumn("");
       topButton.Text(function(song) { return "^"; });
@@ -451,6 +456,9 @@ function plainOlPlayerInit() {
       window.scrollBy(0, 0 - window.pageYOffset);
    }));
    // NOTE: btns also modified by cmrsearchinit
+
+   var statusText = document.getElementById("popStatusText");
+   statusText.style.fontSize = "smaller";
 
    cmus_status(newPlayerStatus);
    document.addEventListener("keyup", keyupHandler, false);

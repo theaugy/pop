@@ -197,7 +197,6 @@ function enqueueMatching(field, value, clickedSong) {
 function cmrsearchInit() {
    ResultsSongTable = new SongTable("resultList");
    ResultsSongTable.historySize = 10; // can probably get away with even more...
-   ResultsSongTable.enableButton = false;
 
    ResultsSongTable.album.Button(function(song, evt) {
       enqueueMatching('album', song['album'], song);
