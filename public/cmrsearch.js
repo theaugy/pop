@@ -160,21 +160,9 @@ function monthAddedClick(evt) {
 function loadPlaylistClick(evt) {
    var x = evt.clientX;
    var y = evt.clientY;
-   getCmr("listPlaylist", function(response) {
-      var playlists = response.split("\n");
-      playlistsLoaded(playlists, x, y, function(picker, pl) {
-         return function() {
-            getCmr("getPlaylist?" + makeArgs(["name", pl]), queryCallback);
-            picker.parentElement.removeChild(picker);
-         }
-      });
+   selectPlaylist(evt.pageX, evt.pageY, function(pl) {
+      getCmr("getPlaylist?" + makeArgs(["name", pl]), queryCallback);
    });
-}
-
-function makePlaylistOption(name) {
-   var opt = document.createElement("button");
-   opt.appendChild(document.createTextNode(name));
-   return opt;
 }
 
 function enqueueMatching(field, value, clickedSong) {

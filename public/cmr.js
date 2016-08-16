@@ -55,7 +55,7 @@ function getCmr (msg, callback)
       {
          if (this.status === 200) {
             document.getElementById("status").style.background = "";
-            cb (this.responseText);
+            if (cb) cb (this.responseText);
          } else {
          }
       }
@@ -89,6 +89,12 @@ function cmus_enqueue(path, callback) {
 }
 function cmus_dequeue(path, callback) {
    getCmr("dequeue?" + makeArgs(["path", path]), callback);
+}
+function cmus_currentToPlaylist(pl) {
+   getCmr("addPlaylist?" + makeArgs(["name", pl]), function(){});
+}
+function cmus_pathToPlaylist(pl, path) {
+   getCmr("addPlaylist?" + makeArgs(["name", pl, 'path', path]), function(){});
 }
 
 // get current playlist
@@ -224,9 +230,17 @@ function updatePlainOlPlayer() {
    }
    var statusText = document.getElementById("popStatusText");
    clearChildren(statusText);
+   var pos = s['position'];
+   var dur = s['duration'];
    statusText.appendChild(
          document.createTextNode(
-            s["status"] + " " + s["position"] + "/" + s["duration"]));
+            s["status"] + " " + pos + "/" + dur));
+
+   var prog = document.getElementById('popProgressBar');
+   if (prog) {
+      prog.style.width = (parseInt(pos) * 100) / parseInt(dur) + "%";
+   }
+
    document.title = "PoP: " + s["title"] + " - " + s["artist"] + s["path"];
 }
 
@@ -336,6 +350,41 @@ function getQueueButtons() {
    return document.getElementById("plainOlQButtons");
 }
 
+function qdoMatching(evt, field, value, clickedSong) {
+   var foundMatch = false;
+   var q = QueueSongTable;
+   var todo = [];
+   if (clickedSong === null) foundMatch = true;
+   for (var i = 0; i < q.currentSongs.length; ++i) {
+      if (!foundMatch && q.currentSongs[i] === clickedSong) {
+         foundMatch = true; // start at the clicked song
+      }
+      if (foundMatch && q.currentSongs[i][field] === value) {
+         todo.push(q.currentSongs[i]);
+      } else if (foundMatch) {
+         break; // first non-match after the original breaks
+      }
+   }
+   if (todo.length > 0) {
+      selectString(["Add to playlist...", "Remove"], evt.pageX, evt.pageY, function(songs) {
+         return function(selected) {
+            if (selected === "Add to playlist...") {
+               selectPlaylist(evt.pageX, evt.pageY, function(playlist) {
+                  for (var i = 0; i < songs.length; ++i) {
+                     cmus_pathToPlaylist(playlist, songs[i]['path']);
+                  }
+               });
+            } else if (selected === "Remove") {
+               for (var i = 0; i < songs.length; ++i) {
+                  cmus_dequeue(songs[i]['path'], null);
+               }
+               cmus_queue(newQueueStatus); // refresh status after dequeueing everything
+            }
+         }
+      }(todo));
+   }
+}
+
 function plainOlQueueInit() {
    var q = getPlainOlQueue();
    var buttons = getQueueButtons();
@@ -360,6 +409,14 @@ function plainOlQueueInit() {
       }}) (q);
       buttons.appendChild(s);
    }
+
+   q.artist.Button(function(song, evt) {
+      qdoMatching(evt, 'artist', song['artist'], song);
+   });
+   q.album.Button(function(song, evt) {
+      qdoMatching(evt, 'album', song['album'], song);
+   });
+
    cmus_queue(newQueueStatus);
 }
 
@@ -460,21 +517,50 @@ function plainOlPlayerInit() {
    var statusText = document.getElementById("popStatusText");
    statusText.style.fontSize = "smaller";
 
+   var prog = document.getElementById('popProgress');
+   prog.onclick = function (p) {
+      var prog = p;
+      return function(evt) {
+      var s = getPlayerStatus();
+      if (s) {
+         var x = evt.offsetX;
+         var pos = evt.offsetX / prog.offsetWidth;
+         pos = Math.round(pos * s['duration']);
+         cmus_seekto(pos, newPlayerStatus);
+      }
+   }}(prog);
+
    cmus_status(newPlayerStatus);
    document.addEventListener("keyup", keyupHandler, false);
 }
 
-function playlistsLoaded(playlists, x, y, onPlClick) {
+function makeTextButton(name) {
+   var opt = document.createElement("button");
+   opt.appendChild(document.createTextNode(name));
+   return opt;
+}
+
+function stringSelector(strings, onStringClick, autoDestroy) {
    var c = document.createElement("div");
-   c.className = "letterSelect";
-   for (i = 0; i < playlists.length; ++i) {
-      var plname = playlists[i];
-      if (plname === "") {
+   for (i = 0; i < strings.length; ++i) {
+      var s = strings[i];
+      if (s === "") {
          continue;
       }
-      var pl = makePlaylistOption(plname);
-      pl.onclick = onPlClick(c, plname);
-      c.appendChild(pl);
+      var btn = makeTextButton(s);
+      if (autoDestroy) {
+         btn.onclick = function(str) {
+            return function() {
+               onStringClick(str);
+               c.parentElement.removeChild(c);
+            }}(s);
+      } else {
+         btn.onclick = function (str) {
+            return function() {
+               onStringClick(str);
+            }}(s);
+      }
+      c.appendChild(btn);
    }
    var nm = document.createElement("button");
    nm.appendChild(document.createTextNode("[nevermind]"));
@@ -483,7 +569,12 @@ function playlistsLoaded(playlists, x, y, onPlClick) {
    }
    c.appendChild(nm);
 
-   c.className = "letterSelector";
+   c.className = "stringSelector";
+   return c;
+}
+
+function playlistsLoaded(playlists, x, y, onPlClick) {
+   var c = stringSelector(playlists, onPlClick, true);
    c.style.position = "absolute";
    c.style.left = x;
    c.style.top = y;
@@ -492,16 +583,26 @@ function playlistsLoaded(playlists, x, y, onPlClick) {
 
 function noOp() {}
 
+function selectPlaylist(x, y, callback) {
+   getCmr("listPlaylist", function(response) {
+      var playlists = response.split("\n");
+      playlistsLoaded(playlists, x, y - 200, callback);
+   });
+}
+
 function addToPlaylistClick(evt) {
    var x = evt.clientX;
    var y = evt.clientY;
-   getCmr("listPlaylist", function(response) {
-      var playlists = response.split("\n");
-      playlistsLoaded(playlists, x, y - 200, function(picker, pl) {
-         return function() {
-            getCmr("addPlaylist?" + makeArgs(["name", pl]), noOp);
-            picker.parentElement.removeChild(picker);
-         }
-      });
+   selectPlaylist(evt.pageX, evt.pageY, function(pl) {
+      console.log(pl);
+      cmus_currentToPlaylist(pl);
    });
+}
+
+function selectString(strings, x, y, cb) {
+   var c = stringSelector(strings, cb, true);
+   c.style.position = "absolute";
+   c.style.left = x;
+   c.style.top = y;
+   document.body.appendChild(c);
 }

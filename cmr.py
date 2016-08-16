@@ -16,6 +16,7 @@ class CmrRequest (BaseHTTPRequestHandler):
    getRandom = "../private/bash-scripts/random-tracks.sh"
    favCurrent = "../private/bash-scripts/favorite-current.sh"
    addCurrent = "../private/bash-scripts/add-current.sh"
+   addPath = "../private/bash-scripts/add-path-pl.sh"
    listPlaylists = "../private/bash-scripts/list-playlists.sh"
    getPlaylist = "../private/bash-scripts/get-playlist.sh"
    dequeuePath = "../private/bash-scripts/dequeue-path.sh"
@@ -390,11 +391,22 @@ class CmrRequest (BaseHTTPRequestHandler):
           elif command == "add":
               parsed = urlparse.urlparse(s.path);
               query = urlparse.parse_qsl(parsed.query, True)
+              songPath = "";
+              playlist = "";
               for name,value in query:
                   if name == "name":
+                      playlist = value
+                  elif name == "path":
+                      songPath = value
+              if playlist != "":
+                  if songPath != "":
+                      print "Adding %s to playlist %s" % (songPath, playlist)
+                      s.wfile.write(subprocess.check_output([s.addPath, songPath, playlist]))
+                  else:
                       print "Adding current to playlist %s" % (value)
                       s.wfile.write(subprocess.check_output([s.addCurrent, value]))
-                      return True
+                  return True
+              return False
       return False
 
    def tryAsTool(s):
