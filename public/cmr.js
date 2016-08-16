@@ -579,6 +579,9 @@ function playlistsLoaded(playlists, x, y, onPlClick) {
    c.style.left = x;
    c.style.top = y;
    document.body.appendChild(c);
+   if (parseInt(c.style.left) + c.clientWidth > window.innerWidth) {
+      c.style.left = window.innerWidth - c.clientWidth + "px";
+   }
 }
 
 function noOp() {}
@@ -605,4 +608,7 @@ function selectString(strings, x, y, cb) {
    c.style.left = x;
    c.style.top = y;
    document.body.appendChild(c);
+   if (parseInt(c.style.left) + c.clientWidth > window.innerWidth) {
+      c.style.left = window.innerWidth - c.clientWidth + "px";
+   }
 }
