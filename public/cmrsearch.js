@@ -46,7 +46,7 @@ function makeLetterOption(letter, combo)
    var opt = document.createElement("div");
    opt.className = "letterContainer";
    opt.appendChild(makeLetter(letter, combo));
-   opt.onclick = function (evt) {
+   opt.onclick = evt => {
       querySubmit1("artist", "::^", letter);
       combo.onblur();
    }
@@ -59,9 +59,7 @@ function closeButton(combo)
    opt.className = "letterContainer";
    var btn = document.createElement("button");
    btn.appendChild(document.createTextNode("close"));
-   btn.onclick = function (evt) {
-      combo.onblur();
-   }
+   btn.onclick = evt => combo.onblur();
    opt.appendChild(btn);
    return opt;
 }
@@ -108,9 +106,7 @@ function artistClick(evt) {
    letter.style.left = evt.clientX;
    letter.tabIndex = "0";
    letter.focus();
-   letter.onblur = function () {
-      document.getElementById("submitWrapper").removeChild(letter);
-   }
+   letter.onblur = () => document.getElementById("submitWrapper").removeChild(letter);
    document.getElementById("submitWrapper").appendChild(letter);
 }
 
@@ -160,9 +156,8 @@ function monthAddedClick(evt) {
 function loadPlaylistClick(evt) {
    var x = evt.clientX;
    var y = evt.clientY;
-   selectPlaylist(evt.pageX, evt.pageY, function(pl) {
-      getCmr("getPlaylist?" + makeArgs(["name", pl]), queryCallback);
-   });
+   selectPlaylist(evt.pageX, evt.pageY,
+         pl => getCmr("getPlaylist?" + makeArgs(["name", pl]), queryCallback));
 }
 
 function enqueueMatching(field, value, clickedSong) {
@@ -186,15 +181,12 @@ function cmrsearchInit() {
    ResultsSongTable = new SongTable("resultList");
    ResultsSongTable.historySize = 10; // can probably get away with even more...
 
-   ResultsSongTable.album.Button(function(song, evt) {
-      enqueueMatching('album', song['album'], song);
-   });
-   ResultsSongTable.artist.Button(function(song, evt) {
-      enqueueMatching('artist', song['artist'], song);
-   });
-   ResultsSongTable.title.Button(function(song, evt) {
-      cmus_enqueue(song['path'], newQueueStatus);
-   });
+   ResultsSongTable.album.Button(
+         (song, evt) => enqueueMatching('album', song['album'], song));
+   ResultsSongTable.artist.Button(
+         (song, evt) => enqueueMatching('artist', song['artist'], song));
+   ResultsSongTable.title.Button(
+         (song, evt) => cmus_enqueue(song['path'], newQueueStatus));
 
    emptyResultList();
 
@@ -214,15 +206,13 @@ function cmrsearchInit() {
    document.getElementById("monthadded").onclick=monthAddedClick;
    document.getElementById("releaseyear").onclick=releaseYearClick;
    document.getElementById("loadplaylist").onclick=loadPlaylistClick;
-   document.getElementById("back").onclick=function () { ResultsSongTable.Back(); };
-   document.getElementById("forward").onclick=function() { ResultsSongTable.Forward(); };
+   document.getElementById("back").onclick=() => ResultsSongTable.Back();
+   document.getElementById("forward").onclick=() => ResultsSongTable.Forward();
    plainOlPlayerInit();
    plainOlQueueInit();
    toolsInit();
 
-   TrackChanged.addCallback(function() {
-      cmus_queue(newQueueStatus);
-   });
+   TrackChanged.addCallback(() => cmus_queue(newQueueStatus));
 
    var btns = document.getElementById("popButtons");
    btns.appendChild(makeCmusButton("get history", function(evt) {

@@ -164,17 +164,17 @@ function getPlainOlPlayerSongTable() {
       t.SetCookieStore("PoPNowPlaying");
 
       var bm = new CustomColumn("");
-      bm.Text(function(){ return "-1m"; });
-      bm.Button(function(song) { cmus_b1m(newPlayerStatus); });
+      bm.Text(song => "-1m");
+      bm.Button(song => cmus_b1m(newPlayerStatus));
       t.AddCustomColumn(bm);
 
       var fm = new CustomColumn("");
-      fm.Text(function(){ return "+1m"; });
-      fm.Button(function(song) { cmus_f1m(newPlayerStatus); });
+      fm.Text(song => "+1m");
+      fm.Button(song => cmus_f1m(newPlayerStatus));
       t.AddCustomColumn(fm);
 
       var g2 = new CustomColumn("");
-      g2.Text(function(){ return "goto..."; });
+      g2.Text(song => "goto...");
       g2.Button(function(song) {
          var pos = window.prompt("Position in seconds:", "0");
          if (pos != null)
@@ -185,8 +185,8 @@ function getPlainOlPlayerSongTable() {
       t.AddCustomColumn(g2);
 
       var next = new CustomColumn("");
-      next.Text(function() { return "Next"; });
-      next.Button(function(song) { cmus_next(); });
+      next.Text(song => "Next");
+      next.Button(song => cmus_next());
       t.AddCustomColumn(next);
    }
    return PlainOlPlayerSongTable;
@@ -304,9 +304,7 @@ function runTool(name, argstring) {
 function makeToolButton(text, tool, argstring) {
    var b = document.createElement("button");
    b.appendChild(document.createTextNode(text));
-   b.onclick = function () {
-      runTool(tool, argstring);
-   }
+   b.onclick = () => runTool(tool, argstring);
    return b;
 }
 
@@ -330,17 +328,14 @@ function getPlainOlQueue() {
       QueueSongTable.album.name = "";
 
       var topButton = new CustomColumn("");
-      topButton.Text(function(song) { return "^"; });
-      topButton.Button(function(song) {
-         getCmr("topqueue?" + makeArgs(["path", song["path"]]), newQueueStatus);
-      });
+      topButton.Text(song => "^");
+      topButton.Button(
+            song => getCmr("topqueue?" + makeArgs(["path", song["path"]]), newQueueStatus));
       QueueSongTable.AddCustomColumn(topButton);
 
       var remove = new CustomColumn("");
-      remove.Text(function() { return "-"; });
-      remove.Button(function(song) {
-         cmus_dequeue(song['path'], newQueueStatus);
-      });
+      remove.Text(song => "-");
+      remove.Button(song => cmus_dequeue(song['path'], newQueueStatus));
       QueueSongTable.AddCustomColumn(remove);
    }
    return QueueSongTable;
@@ -391,9 +386,7 @@ function plainOlQueueInit() {
    if (buttons !== null) {
       var b = document.createElement("button");
       b.appendChild(document.createTextNode("refresh"));
-      b.onclick=function(evt) {
-         cmus_queue(newQueueStatus);
-      }
+      b.onclick = evt => cmus_queue(newQueueStatus);
       buttons.appendChild(b);
 
       var s = document.createElement("button");
@@ -587,7 +580,7 @@ function playlistsLoaded(playlists, x, y, onPlClick) {
 function noOp() {}
 
 function selectPlaylist(x, y, callback) {
-   getCmr("listPlaylist", function(response) {
+   getCmr("listPlaylist", response => {
       var playlists = response.split("\n");
       playlistsLoaded(playlists, x, y - 200, callback);
    });
@@ -596,10 +589,7 @@ function selectPlaylist(x, y, callback) {
 function addToPlaylistClick(evt) {
    var x = evt.clientX;
    var y = evt.clientY;
-   selectPlaylist(evt.pageX, evt.pageY, function(pl) {
-      console.log(pl);
-      cmus_currentToPlaylist(pl);
-   });
+   selectPlaylist(evt.pageX, evt.pageY, pl => cmus_currentToPlaylist(pl));
 }
 
 function selectString(strings, x, y, cb) {
