@@ -96,6 +96,9 @@ function cmus_currentToPlaylist(pl) {
 function cmus_pathToPlaylist(pl, path) {
    getCmr("addPlaylist?" + makeArgs(["name", pl, 'path', path]), function(){});
 }
+function cmus_topqueue(path, callback) {
+   getCmr("topqueue?" + makeArgs(["path", path]), callback);
+}
 
 // get current playlist
 function cmus_playlist (callback) { getCmr("playlist", callback); }
@@ -159,8 +162,11 @@ function getPlainOlPlayerSongTable() {
       t.historySize = 100;
       // the default column titles are kinda noisy
       t.artist.name = "";
+      t.artist.Icon("");
       t.title.name = "";
+      t.title.Icon("");
       t.album.name = "";
+      t.album.Icon("");
       t.SetCookieStore("PoPNowPlaying");
 
       var bm = new CustomColumn("");
@@ -324,19 +330,14 @@ function getPlainOlQueue() {
       QueueSongTable = new SongTable("plainOlQueue", "Artist|Title|Album");
       QueueSongTable.historySize = 1; // no use for old queue states
       QueueSongTable.artist.name = "";
+      QueueSongTable.artist.Icon("");
+      QueueSongTable.artist.buttonAppliesToMatches = true;
       QueueSongTable.title.name = "";
+      QueueSongTable.title.Icon("");
+      QueueSongTable.title.buttonAppliesToMatches = true;
       QueueSongTable.album.name = "";
-
-      var topButton = new CustomColumn("");
-      topButton.Text(song => "^");
-      topButton.Button(
-            song => getCmr("topqueue?" + makeArgs(["path", song["path"]]), newQueueStatus));
-      QueueSongTable.AddCustomColumn(topButton);
-
-      var remove = new CustomColumn("");
-      remove.Text(song => "-");
-      remove.Button(song => cmus_dequeue(song['path'], newQueueStatus));
-      QueueSongTable.AddCustomColumn(remove);
+      QueueSongTable.album.Icon("");
+      QueueSongTable.album.buttonAppliesToMatches = true;
    }
    return QueueSongTable;
 }
@@ -345,38 +346,11 @@ function getQueueButtons() {
    return document.getElementById("plainOlQButtons");
 }
 
-function qdoMatching(evt, field, value, clickedSong) {
-   var foundMatch = false;
-   var q = QueueSongTable;
-   var todo = [];
-   if (clickedSong === null) foundMatch = true;
-   for (var i = 0; i < q.currentSongs.length; ++i) {
-      if (!foundMatch && q.currentSongs[i] === clickedSong) {
-         foundMatch = true; // start at the clicked song
-      }
-      if (foundMatch && q.currentSongs[i][field] === value) {
-         todo.push(q.currentSongs[i]);
-      } else if (foundMatch) {
-         break; // first non-match after the original breaks
-      }
-   }
+function qdoMatching(evt, field, clickedSong, doer) {
+   if (doer === null) return;
+   var todo = QueueSongTable.getMatchingSongs(clickedSong, field);
    if (todo.length > 0) {
-      selectString(["Add to playlist...", "Remove"], evt.pageX, evt.pageY, function(songs) {
-         return function(selected) {
-            if (selected === "Add to playlist...") {
-               selectPlaylist(evt.pageX, evt.pageY, function(playlist) {
-                  for (var i = 0; i < songs.length; ++i) {
-                     cmus_pathToPlaylist(playlist, songs[i]['path']);
-                  }
-               });
-            } else if (selected === "Remove") {
-               for (var i = 0; i < songs.length; ++i) {
-                  cmus_dequeue(songs[i]['path'], null);
-               }
-               cmus_queue(newQueueStatus); // refresh status after dequeueing everything
-            }
-         }
-      }(todo));
+      doer(evt, todo);
    }
 }
 
@@ -403,12 +377,71 @@ function plainOlQueueInit() {
       buttons.appendChild(s);
    }
 
+   // arrow-up
+   // bars
+   // times
+   // floppy-o
+
+   var menu = new CustomColumn("Menu");
+   menu.Icon("bars");
+   menu.actionList = [];
+   menu.actions = {};
+   menu.Text(song => "menu");
+   menu.GetCurrentAction = function() { return this.actions.current; };
+
+   menu.actions.remove = (evt, songs) => {
+      songs.forEach(s => cmus_dequeue(s['path'], null));
+      cmus_queue(newQueueStatus); // refresh status after dequeueing everything
+   };
+   menu.actionList.push(menu.actions.remove);
+
+   menu.actions.pladd = (evt, songs) => {
+      selectPlaylist(evt.pageX, evt.pageY, function(playlist) {
+         songs.forEach(s => cmus_pathToPlaylist(playlist, s['path']));
+      });
+   };
+   menu.actionList.push(menu.actions.pladd);
+
+   menu.actions.playnext = (evt, songs) => {
+      songs.forEach(s => cmus_topqueue(s['path'], null));
+      cmus_queue(newQueueStatus); // refresh status once at end
+   }
+   menu.actionList.push(menu.actions.playnext);
+
+   menu.Button(function(song, evt) {
+      selectString(["Add to playlist", "Remove", "Play Next"],
+                   ["floppy-o", "times", "arrow-up"], evt.pageX, evt.pageY,
+         function(selected) {
+            var cols = [q.artist, q.album, q.title];
+            if (selected === "Add to playlist") {
+               menu.actions.current = menu.actions.pladd;
+               q.ModifyColumnsIcon(cols, "floppy-o");
+            } else if (selected === "Remove") {
+               menu.actions.current = menu.actions.remove;
+               q.ModifyColumnsIcon(cols, "times");
+            } else if (selected === "Play Next") {
+               menu.actions.current = menu.actions.playnext;
+               q.ModifyColumnsIcon(cols, "arrow-up");
+            }
+         });
+   });
+
+   q.AddCustomColumn(menu);
+
    q.artist.Button(function(song, evt) {
-      qdoMatching(evt, 'artist', song['artist'], song);
+      qdoMatching(evt, 'artist', song, menu.GetCurrentAction());
    });
    q.album.Button(function(song, evt) {
-      qdoMatching(evt, 'album', song['album'], song);
+      qdoMatching(evt, 'album', song, menu.GetCurrentAction());
    });
+   q.title.Button(function(song, evt) {
+      qdoMatching(evt, 'title', song, menu.GetCurrentAction());
+   });
+
+   // establish the default action here
+   menu.actions.current = menu.actions.playnext;
+   var cols = [q.artist, q.album, q.title];
+   q.ModifyColumnsIcon(cols, "arrow-up");
 
    cmus_queue(newQueueStatus);
 }
@@ -533,8 +566,9 @@ function makeTextButton(name) {
    return opt;
 }
 
-function stringSelector(strings, onStringClick, autoDestroy) {
+function stringSelector(strings, icons, onStringClick, autoDestroy) {
    var c = document.createElement("div");
+   var useIcons = (icons.length === strings.length);
    for (i = 0; i < strings.length; ++i) {
       var s = strings[i];
       if (s === "") {
@@ -553,9 +587,22 @@ function stringSelector(strings, onStringClick, autoDestroy) {
                onStringClick(str);
             }}(s);
       }
+      if (useIcons) {
+         var icon = document.createElement("i");
+         icon.className = "fa fa-" + icons[i];
+         icon.style.fontSize = "smaller";
+         icon.style.marginRight = ".2em";
+         btn.insertBefore(icon, btn.firstChild);
+      }
       c.appendChild(btn);
    }
    var nm = document.createElement("button");
+
+   var nmicon = document.createElement("i");
+   nmicon.className = "fa fa-ban";
+   nm.appendChild(nmicon);
+   nmicon.style.fontSize = "smaller";
+   nmicon.style.marginRight = ".2em";
    nm.appendChild(document.createTextNode("[nevermind]"));
    nm.onclick=function(evt) {
       c.parentElement.removeChild(c);
@@ -567,7 +614,7 @@ function stringSelector(strings, onStringClick, autoDestroy) {
 }
 
 function playlistsLoaded(playlists, x, y, onPlClick) {
-   var c = stringSelector(playlists, onPlClick, true);
+   var c = stringSelector(playlists, [], onPlClick, true);
    c.style.position = "absolute";
    c.style.left = x;
    c.style.top = y;
@@ -592,8 +639,8 @@ function addToPlaylistClick(evt) {
    selectPlaylist(evt.pageX, evt.pageY, pl => cmus_currentToPlaylist(pl));
 }
 
-function selectString(strings, x, y, cb) {
-   var c = stringSelector(strings, cb, true);
+function selectString(strings, icons, x, y, cb) {
+   var c = stringSelector(strings, icons, cb, true);
    c.style.position = "absolute";
    c.style.left = x;
    c.style.top = y;

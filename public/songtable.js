@@ -49,9 +49,7 @@ SongTable.prototype.addDefaultColumns = function(columns) {
 SongTable.prototype.makeHeaderRow = function() {
    var h = document.createElement("tr");
    var st = this;
-   this.customColumns.forEach(function(cc) {
-      h.appendChild(st.makeTH(cc.name));
-   });
+   this.customColumns.forEach(cc => h.appendChild(st.makeTH(cc)));
    return h;
 }
 
@@ -63,13 +61,19 @@ SongTable.prototype.Clear = function() {
    t.appendChild(this.makeHeaderRow());
 }
 
-SongTable.prototype.makeTH = function(text) {
+SongTable.prototype.makeTH = function(cc) {
    var h = document.createElement("th");
-   h.appendChild(document.createTextNode(text));
+   h.appendChild(document.createTextNode(cc.name));
+   var i = cc.GetIcon();
+   if (i !== null) {
+      h.appendChild(i);
+      i.className = "headerIcon";
+   }
    return h;
 }
 
-SongTable.prototype.makeTD = function(text) {
+SongTable.prototype.makeTD = function(cc, song) {
+   var text = cc.GetText(song);
    var td = document.createElement("td");
    td.appendChild(document.createTextNode(text));
    return td;
@@ -79,6 +83,54 @@ SongTable.prototype.makeTDEl = function (el) {
    var td = document.createElement("td");
    td.appendChild(el);
    return td;
+}
+
+SongTable.prototype.getMatchingSongs = function(clickedSong, field) {
+   var todo = [];
+   var foundMatch = false;
+   var value = clickedSong[field];
+   if (clickedSong === null) foundMatch = true;
+   for (var i = 0; i < this.currentSongs.length; ++i) {
+      if (!foundMatch && this.currentSongs[i] === clickedSong) {
+         foundMatch = true; // start at the clicked song
+      }
+      if (foundMatch && this.currentSongs[i][field] === value) {
+         todo.push(this.currentSongs[i]);
+      } else if (foundMatch) {
+         break; // first non-match after the original breaks
+      }
+   }
+   return todo;
+}
+
+SongTable.prototype.getMatchingItems = function(clickedItem) {
+   var tr = clickedItem.parentElement;
+   var ret = [];
+   var foundMatch = false;
+   var foundDiff = false;
+   var matchText = clickedItem.customColumn.GetText(tr.cmr_song);
+   for (var i = 0; i < this.table.children.length; ++i) {
+      var r = this.table.children[i]; // row
+      if (!foundMatch && r === tr) {
+         foundMatch = true; // start at the clicked song
+      }
+      if (foundMatch && r.cmr_song) {
+         for (var j = 0; j < r.children.length; ++j) {
+            var rchild = r.children[j];
+            if (rchild.customColumn === clickedItem.customColumn) {
+               if (matchText === rchild.customColumn.GetText(r.cmr_song)) {
+                  ret.push(rchild);
+               } else {
+                  foundDiff = true;
+               }
+            }
+         }
+      }
+      if (foundDiff) {
+         break; // first non-match after the original breaks
+      }
+   }
+   return ret;
 }
 
 // Pass a song data object, which should have:
@@ -91,7 +143,29 @@ SongTable.prototype.add = function(s) {
       if (cc.IsButton()) {
          child = st.makeTDEl(cc.GetButton(s));
       } else {
-         child = st.makeTD(cc.GetText(s));
+         child = st.makeTD(cc, s);
+      }
+      child.customColumn = cc;
+      var c = cc.GetIcon();
+      if (c !== null) {
+         c.className = "iconWrapper";
+         child.appendChild(c);
+         child.iconEl = c;
+         c.style.color = "transparent";
+         if (cc.buttonAppliesToMatches) {
+            // configure onmouseover/onmouseleave such that it
+            // affects all matched items
+            child.onmouseover = evt => st.getMatchingItems(child).forEach(m => m.iconEl.style.color = "");
+            child.onmouseleave = evt => st.getMatchingItems(child).forEach(m => m.iconEl.style.color = "transparent");
+         } else {
+            child.onmouseover = evt => c.style.color = "";
+            child.onmouseleave = evt => c.style.color = "transparent";
+         }
+         if (child.children[0].clickHandler) {
+            c.onclick = evt => {
+               child.children[0].clickHandler(evt);
+            };
+         }
       }
       tr.appendChild(child);
       if (cc.polishcb) {
@@ -216,12 +290,31 @@ SongTable.prototype.AddCustomColumn = function (cc) {
    }
 }
 
+SongTable.prototype.ModifyColumnsIcon = function (cclist, newIcon) {
+   cclist.forEach(cc => this.ModifyColumnIcon(cc, newIcon));
+}
+
+SongTable.prototype.ModifyColumnIcon = function (cc, newIcon) {
+   if (cc === null) return;
+   if (this.table === null) {
+      cc.Icon(newIcon); // don't have to update anything
+      return;
+   }
+   cc.Icon(newIcon);
+   var icons = document.querySelectorAll("table td div.iconWrapper");
+   icons.forEach(icon => cc.ModifyIcon(icon));
+   var hicons = document.querySelectorAll("table th div.headerIcon");
+   icons.forEach(icon => cc.ModifyIcon(icon));
+}
+
 CustomColumn = function (name) {
    this.name = name;
    this.text = null;
    this.button = null;
    this.buttoncb = null;
    this.polishcb = null;
+   this.icon = "";
+   this.buttonAppliesToMatches = false;
 }
 
 CustomColumn.prototype.Text = function(textcb) {
@@ -230,6 +323,10 @@ CustomColumn.prototype.Text = function(textcb) {
 
 CustomColumn.prototype.Button = function(cb) {
    this.buttoncb = cb;
+}
+
+CustomColumn.prototype.Icon = function(name) {
+   this.icon = name;
 }
 
 CustomColumn.prototype.Polish = function(cb) {
@@ -253,13 +350,41 @@ CustomColumn.prototype.GetButton = function(song) {
       var b = document.createElement("button");
       b.appendChild(document.createTextNode(this.GetText(song)));
       var cb = this.buttoncb;
-      b.onclick = (function(s) { 
+      b.clickHandler = (function(s) { 
          var thesong = s;
          return function (evt) {
             cb(thesong, evt);
          }
       })(song);
+      b.onclick = b.clickHandler;
       return b;
    }
    return null;
+}
+
+CustomColumn.prototype.getIconName = function() {
+   if (this.icon !== "") {
+      return "fa fa-" + this.icon;
+   }
+   return "";
+}
+
+// This icon shows after the column title
+CustomColumn.prototype.GetIcon = function() {
+   var icon = this.getIconName();
+   if (icon === "") icon = " ";
+   var div = document.createElement("div");
+   div.style.display = "inline-block";
+   div.style.fontSize = "smaller";
+   var i = document.createElement("i");
+   i.className = icon;
+   div.appendChild(i);
+   div.customColumn = this;
+   return div;
+}
+
+CustomColumn.prototype.ModifyIcon = function(icon) {
+   if (icon.customColumn === this) {
+      icon.children[0].className = this.getIconName();
+   }
 }

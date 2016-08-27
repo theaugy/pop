@@ -95,7 +95,8 @@ div#plainOlQueueWrapper {
    border: 5px solid black;
 }
 
-table#plainOlQueue {
+table#plainOlQueue th {
+   display: none;
 }
 
 div#playerWrapper {
@@ -123,15 +124,31 @@ li.currentlyPlaying {
 
 table {
    border-top: 1px solid #4ddb9f;
+   border-spacing: 0px;
 }
 
 th, td {
    border-bottom: 0px solid black;
+   margin-top: 0px;
+   margin-bottom: 0px;
+}
+
+div.headerIcon {
+   display: inline-block;
+   margin: 0px 0px 0px 0px;
+   padding: 0px 0px 0px 0px;
+}
+
+div.songIcon {
+   margin: 0px 0px 0px 0px;
+   padding: 0px 0px 0px 0px;
 }
 
 tr {
    background-color: #2b2b2b;
    color: #4ddb9f;
+   margin-top: 0px;
+   margin-bottom: 0px;
 }
 
 div#statusWrapper td {

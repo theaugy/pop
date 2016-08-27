@@ -255,9 +255,14 @@ class CmrRequest (BaseHTTPRequestHandler):
       print s.log_date_time_string() + " ...done with " + s.path
 
    def writeFileToResponse (s, fname):
-      f = open (fname, "r")
-      s.wfile.write (f.read ().encode ())
-      f.close ()
+      f = open(fname, "r")
+      s.wfile.write(f.read ().encode ())
+      f.close()
+
+   def writeBinaryFileToResponse (s, fname):
+      f = open (fname, "rb")
+      s.wfile.write(f.read ())
+      f.close()
 
    # returns true if the requested path is the root and serves
    # up the cmr player
@@ -449,13 +454,18 @@ class CmrRequest (BaseHTTPRequestHandler):
          ext = match.group (2)
 
          if s.isBinary(ext):
-             f = open(name + "." + ext, "rb");
-             s.wfile.write(f.read());
-             f.close();
+             writeBinaryFileToResponse(name + "." + ext)
          else:
              # todo: check that extension is OK
              s.writeFileToResponse (name + "." + ext)
          return True
+
+      fa = re.compile("^/font-awesome/([^?]+)")
+      match = fa.match(s.path)
+      if match:
+         s.writeBinaryFileToResponse("font-awesome/" + match.group(1))
+         return True
+
       return False
 
 

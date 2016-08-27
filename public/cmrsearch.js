@@ -183,10 +183,16 @@ function cmrsearchInit() {
 
    ResultsSongTable.album.Button(
          (song, evt) => enqueueMatching('album', song['album'], song));
+   ResultsSongTable.album.Icon("plus");
+   ResultsSongTable.album.buttonAppliesToMatches = true;
    ResultsSongTable.artist.Button(
          (song, evt) => enqueueMatching('artist', song['artist'], song));
+   ResultsSongTable.artist.Icon("plus");
+   ResultsSongTable.artist.buttonAppliesToMatches = true;
    ResultsSongTable.title.Button(
          (song, evt) => cmus_enqueue(song['path'], newQueueStatus));
+   ResultsSongTable.title.Icon("plus");
+   ResultsSongTable.title.buttonAppliesToMatches = true;
 
    emptyResultList();
 
