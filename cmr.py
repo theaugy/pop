@@ -454,7 +454,7 @@ class CmrRequest (BaseHTTPRequestHandler):
          ext = match.group (2)
 
          if s.isBinary(ext):
-             writeBinaryFileToResponse(name + "." + ext)
+             s.writeBinaryFileToResponse(name + "." + ext)
          else:
              # todo: check that extension is OK
              s.writeFileToResponse (name + "." + ext)
