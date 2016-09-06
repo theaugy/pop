@@ -143,7 +143,7 @@ function dateAddedClick(evt) {
 function monthAddedClick(evt) {
    var p = new Picker({ year: true, month: true, day: false });
    p.SetCallback(function() {
-      q = "added:" + p.GetYear() + "-" +  p.GetMonth();
+      q = "added:" + p.GetYear() + "-" +  p.GetMonth() + " album+";
       getCmr("search?" + makeArgs(["q", q]), queryCallback);
    });
    var div = p.Make();
