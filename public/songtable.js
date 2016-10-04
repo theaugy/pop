@@ -1,6 +1,7 @@
 SongTable = function(tableId, defaultColumns) {
    this.table = document.getElementById(tableId);
    this.customColumns = [];
+   this.mobile = window.mobilecheck();
 
    // NOTE: this adds members for custom columns named:
    // artist, title, album, path
@@ -19,7 +20,11 @@ SongTable = function(tableId, defaultColumns) {
 
 SongTable.prototype.addDefaultColumns = function(columns) {
    if (!columns) {
-      columns = "Artist|Title|Album|Path";
+      if (window.mobilecheck()) {
+         columns = "Artist|Title|Album";
+      } else {
+         columns = "Artist|Title|Album|Path";
+      }
    }
    if (columns.includes("Artist")) {
       this.artist = new CustomColumn("Artist");
@@ -46,10 +51,28 @@ SongTable.prototype.addDefaultColumns = function(columns) {
    }
 }
 
+SongTable.prototype.makeMobileRow = function(song) {
+   var ret = document.createElement("td");
+   var mr = new MobileRow(this, song);
+   ret.appendChild(mr.GetElement());
+   return ret;
+}
+
 SongTable.prototype.makeHeaderRow = function() {
    var h = document.createElement("tr");
    var st = this;
-   this.customColumns.forEach(cc => h.appendChild(st.makeTH(cc)));
+   if (this.mobile) {
+      var row = this.makeMobileRow(null);
+      h.appendChild(row);
+   }
+   else {
+      this.customColumns.forEach(cc => h.appendChild(st.makeTH(cc)));
+   }
+   if (this.mobile) {
+      h.className = "songTableHeaderMobile";
+   } else {
+      h.className = "songTableHeader";
+   }
    return h;
 }
 
@@ -138,40 +161,51 @@ SongTable.prototype.getMatchingItems = function(clickedItem) {
 SongTable.prototype.add = function(s) {
    var tr = document.createElement("tr");
    var st = this;
-   this.customColumns.forEach(function(cc) {
-      var child = null;
-      if (cc.IsButton()) {
-         child = st.makeTDEl(cc.GetButton(s));
-      } else {
-         child = st.makeTD(cc, s);
-      }
-      child.customColumn = cc;
-      var c = cc.GetIcon();
-      if (c !== null) {
-         c.className = "iconWrapper";
-         child.appendChild(c);
-         child.iconEl = c;
-         c.style.color = "transparent";
-         if (cc.buttonAppliesToMatches) {
-            // configure onmouseover/onmouseleave such that it
-            // affects all matched items
-            child.onmouseover = evt => st.getMatchingItems(child).forEach(m => m.iconEl.style.color = "");
-            child.onmouseleave = evt => st.getMatchingItems(child).forEach(m => m.iconEl.style.color = "transparent");
-         } else {
-            child.onmouseover = evt => c.style.color = "";
-            child.onmouseleave = evt => c.style.color = "transparent";
-         }
-         if (child.children[0].clickHandler) {
-            c.onclick = evt => {
-               child.children[0].clickHandler(evt);
-            };
-         }
-      }
+   if (this.mobile) {
+      child = this.makeMobileRow(s);
       tr.appendChild(child);
-      if (cc.polishcb) {
-         cc.polishcb(child);
-      }
-   });
+      this.customColumns.forEach(function(cc) {
+         if (cc.polishcb) {
+            cc.polishcb(child);
+         }
+      });
+   } else {
+      this.customColumns.forEach(function(cc) {
+         var child = null;
+
+         if (cc.IsButton()) {
+            child = st.makeTDEl(cc.GetButton(s));
+         } else {
+            child = st.makeTD(cc, s);
+         }
+         child.customColumn = cc;
+         var c = cc.GetIcon();
+         if (c !== null) {
+            c.className = "iconWrapper";
+            child.appendChild(c);
+            child.iconEl = c;
+            c.style.color = "transparent";
+            if (cc.buttonAppliesToMatches) {
+               // configure onmouseover/onmouseleave such that it
+               // affects all matched items
+               child.onmouseover = evt => st.getMatchingItems(child).forEach(m => m.iconEl.style.color = "");
+               child.onmouseleave = evt => st.getMatchingItems(child).forEach(m => m.iconEl.style.color = "transparent");
+            } else {
+               child.onmouseover = evt => c.style.color = "";
+               child.onmouseleave = evt => c.style.color = "transparent";
+            }
+            if (child.children[0].clickHandler) {
+               c.onclick = evt => {
+                  child.children[0].clickHandler(evt);
+               };
+            }
+         }
+         tr.appendChild(child);
+         if (cc.polishcb) {
+            cc.polishcb(child);
+         }
+      });
+   }
    tr.cmr_song = s;
    this.table.appendChild(tr);
    return tr;
@@ -387,4 +421,59 @@ CustomColumn.prototype.ModifyIcon = function(icon) {
    if (icon.customColumn === this) {
       icon.children[0].className = this.getIconName();
    }
+}
+
+MobileRow = function(songtable, song) {
+   this.songTable = songtable;
+   this.song = song;
+   // the primary field is emphasized
+   if (this.songTable.title)
+      this.primary = this.songTable.title;
+   else
+      this.primary = this.songTable.customColumns[0];
+
+   this.element = document.createElement("div");
+   if (this.song === null) {
+      this.element.appendChild(this.getCCElement(this.primary));
+      this.element.lastChild.className = "primaryMobileField";
+   } else {
+      this.element.appendChild(this.getCCElement(this.primary));
+      this.element.lastChild.className = "primaryMobileField";
+   }
+   this.element.className = "mobileRow";
+   this.element.appendChild(document.createElement("br"));
+   this.nonPrimary = document.createElement("div");
+   this.nonPrimary.className = "nonPrimaryMobileFieldContainer";
+   this.nonPrimaryList = document.createElement("ul");
+   this.nonPrimary.appendChild(this.nonPrimaryList);
+   this.element.appendChild(this.nonPrimary);
+   this.songTable.customColumns.forEach(cc => { if (cc != this.primary) this.addCustomColumn(cc) });
+   this.element.mobileRow = this;
+}
+
+MobileRow.prototype.getCCElement = function(cc) {
+   if (this.song === null) {
+      return document.createTextNode(cc.name);
+   }
+
+   if (cc.IsButton()) {
+      return cc.GetButton(this.song);
+   } else {
+      return document.createTextNode(cc.GetText(this.song));
+   }
+}
+
+MobileRow.prototype.addCustomColumn = function(cc) {
+   if (this.nonPrimaryList.children.length === 0) {
+      this.nonPrimaryList.appendChild(document.createElement("li"));
+   } else {
+      var spacer = document.createElement("div");
+      spacer.className = "spacer";
+      this.nonPrimaryList.lastChild.appendChild(spacer);
+   }
+   this.nonPrimaryList.lastChild.appendChild(this.getCCElement(cc));
+}
+
+MobileRow.prototype.GetElement = function() {
+   return this.element;
 }

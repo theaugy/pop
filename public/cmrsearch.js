@@ -199,18 +199,24 @@ function cmrsearchInit() {
    ResultsSongTable = new SongTable("resultList");
    ResultsSongTable.historySize = 10; // can probably get away with even more...
 
-   ResultsSongTable.album.Button(
-         (song, evt) => enqueueMatching('album', song['album'], song));
-   ResultsSongTable.album.Icon("plus");
-   ResultsSongTable.album.buttonAppliesToMatches = true;
-   ResultsSongTable.artist.Button(
-         (song, evt) => enqueueMatching('artist', song['artist'], song));
-   ResultsSongTable.artist.Icon("plus");
-   ResultsSongTable.artist.buttonAppliesToMatches = true;
-   ResultsSongTable.title.Button(
-         (song, evt) => cmus_enqueue(song['path'], newQueueStatus));
-   ResultsSongTable.title.Icon("plus");
-   ResultsSongTable.title.buttonAppliesToMatches = true;
+   if (ResultsSongTable.album) {
+      ResultsSongTable.album.Button(
+            (song, evt) => enqueueMatching('album', song['album'], song));
+      ResultsSongTable.album.Icon("plus");
+      ResultsSongTable.album.buttonAppliesToMatches = true;
+   }
+   if (ResultsSongTable.artist) {
+      ResultsSongTable.artist.Button(
+            (song, evt) => enqueueMatching('artist', song['artist'], song));
+      ResultsSongTable.artist.Icon("plus");
+      ResultsSongTable.artist.buttonAppliesToMatches = true;
+   }
+   if (ResultsSongTable.title) {
+      ResultsSongTable.title.Button(
+            (song, evt) => cmus_enqueue(song['path'], newQueueStatus));
+      ResultsSongTable.title.Icon("plus");
+      ResultsSongTable.title.buttonAppliesToMatches = true;
+   }
 
    emptyResultList();
 
@@ -269,5 +275,15 @@ function cmrsearchInit() {
          sw.style.display = "none";
       }
    };
+
+   var sw = document.getElementById("statusWrapper");
+   if (window.mobilecheck()) {
+      sw.className = "statusWrapperMobile";
+      document.getElementById("queryInput").className = "inputMobile";
+      document.getElementById("plainOlQueue").className = "plainOlQueueMobile";
+      document.getElementById("tools").className = "toolsMobile";
+   } else {
+      sw.className = "statusWrapper";
+   }
 }
 
