@@ -111,6 +111,10 @@ table.plainOlQueueMobile {
    width:100%;
 }
 
+table.popTableMobile {
+   width:100%;
+}
+
 div.toolsMobile {
    display: none;
 }

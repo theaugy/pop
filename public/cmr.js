@@ -175,31 +175,35 @@ function getPlainOlPlayerSongTable() {
       t.album.Icon("");
       t.SetCookieStore("PoPNowPlaying");
 
-      var bm = new CustomColumn("");
-      bm.Text(song => "-1m");
-      bm.Button(song => cmus_b1m(newPlayerStatus));
-      t.AddCustomColumn(bm);
+      if (!window.mobilecheck()) {
+         var bm = new CustomColumn("");
+         bm.Text(song => "-1m");
+         bm.Button(song => cmus_b1m(newPlayerStatus));
+         t.AddCustomColumn(bm);
 
-      var fm = new CustomColumn("");
-      fm.Text(song => "+1m");
-      fm.Button(song => cmus_f1m(newPlayerStatus));
-      t.AddCustomColumn(fm);
+         var fm = new CustomColumn("");
+         fm.Text(song => "+1m");
+         fm.Button(song => cmus_f1m(newPlayerStatus));
+         t.AddCustomColumn(fm);
 
-      var g2 = new CustomColumn("");
-      g2.Text(song => "goto...");
-      g2.Button(function(song) {
-         var pos = window.prompt("Position in seconds:", "0");
-         if (pos != null)
-         {
-            cmus_seekto(pos, newPlayerStatus);
-         }
-      });
-      t.AddCustomColumn(g2);
+         var g2 = new CustomColumn("");
+         g2.Text(song => "goto...");
+         g2.Button(function(song) {
+            var pos = window.prompt("Position in seconds:", "0");
+            if (pos != null)
+            {
+               cmus_seekto(pos, newPlayerStatus);
+            }
+         });
+         t.AddCustomColumn(g2);
 
-      var next = new CustomColumn("");
-      next.Text(song => "Next");
-      next.Button(song => cmus_next());
-      t.AddCustomColumn(next);
+         var next = new CustomColumn("");
+         next.Text(song => "Next");
+         next.Button(song => cmus_next());
+         t.AddCustomColumn(next);
+      } else {
+         document.getElementById("popTable").className = "popTableMobile";
+      }
    }
    return PlainOlPlayerSongTable;
 }
