@@ -153,6 +153,24 @@ function monthAddedClick(evt) {
    document.body.appendChild(div);
 }
 
+function lastThirtyClick(evt) {
+   var y = new Date().getFullYear();
+   var m = new Date().getMonth() + 1;
+   var d = new Date().getDate();
+   if (m == 1) {
+      y--;
+      m = 12;
+   } else {
+      m--;
+   }
+   if (d > 28) {
+      d = 28;
+   }
+   getCmr("search?" + makeArgs(["q",
+                                "added:" + y + "-" + m + "-" + d + ".. album+"]),
+          queryCallback);
+}
+
 function loadPlaylistClick(evt) {
    var x = evt.clientX;
    var y = evt.clientY;
@@ -210,6 +228,7 @@ function cmrsearchInit() {
    document.getElementById("randombtn").onclick=randomClick;
    document.getElementById("dateadded").onclick=dateAddedClick;
    document.getElementById("monthadded").onclick=monthAddedClick;
+   document.getElementById("lastthirty").onclick=lastThirtyClick;
    document.getElementById("releaseyear").onclick=releaseYearClick;
    document.getElementById("loadplaylist").onclick=loadPlaylistClick;
    document.getElementById("back").onclick=() => ResultsSongTable.Back();
