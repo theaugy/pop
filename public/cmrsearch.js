@@ -106,8 +106,8 @@ function artistClick(evt) {
    letter.style.left = evt.clientX;
    letter.tabIndex = "0";
    letter.focus();
-   letter.onblur = () => document.getElementById("submitWrapper").removeChild(letter);
-   document.getElementById("submitWrapper").appendChild(letter);
+   letter.onblur = () => document.getElementById("search").removeChild(letter);
+   document.getElementById("search").appendChild(letter);
 }
 
 function randomClick(evt) {
@@ -195,6 +195,55 @@ function enqueueMatching(field, value, clickedSong) {
    cmus_queue(newQueueStatus);
 }
 
+var ViewList = [ "player", "search", "settings" ];
+
+function updateViewClasses(previous, direction) {
+   var prev = document.getElementById(previous);
+   var next = document.getElementById(window.location.hash.substr(1));
+   if (direction === "left") {
+      prev.classList.add("hide-right");
+   } else {
+      prev.classList.add("hide-left");
+   }
+   if (next.classList.contains("hide-left"))
+      next.classList.remove("hide-left");
+   if (next.classList.contains("hide-right"))
+      next.classList.remove("hide-right");
+}
+
+function previousView() {
+   var current = window.location.hash.substr(1);
+   var last = "";
+   var changed = false;
+   ViewList.forEach(view => { if (view === current) {
+      if (last !== "") {
+         window.location.href = "#" + last;
+         changed = true;
+      }
+   }
+   last = view;
+   });
+   if (changed) {
+      updateViewClasses(current, "left");
+   }
+}
+
+function nextView() {
+   var current = window.location.hash.substr(1);
+   var doNext = false;
+   var changed = false;
+   ViewList.forEach(view => { if (view === current) {
+      doNext = true;
+   } else if (doNext === true) {
+      window.location.href = "#" + view;
+      doNext = false;
+      changed = true;
+   }});
+   if (changed) {
+      updateViewClasses(current, "right");
+   }
+}
+
 function cmrsearchInit() {
    ResultsSongTable = new SongTable("resultList");
    ResultsSongTable.historySize = 10; // can probably get away with even more...
@@ -268,7 +317,7 @@ function cmrsearchInit() {
       } else {
          vis = true; // no fancy UI. always need the player.
       }
-      var sw = document.getElementById("statusWrapper");
+      var sw = document.getElementById("player");
       if (vis) {
          sw.style.display = "";
       } else {
@@ -276,14 +325,21 @@ function cmrsearchInit() {
       }
    };
 
-   var sw = document.getElementById("statusWrapper");
+   var sw = document.getElementById("player");
    if (window.mobilecheck()) {
-      sw.className = "statusWrapperMobile";
+      sw.classList.add("statusWrapperMobile");
       document.getElementById("queryInput").className = "inputMobile";
       document.getElementById("plainOlQueue").className = "plainOlQueueMobile";
       document.getElementById("tools").className = "toolsMobile";
    } else {
-      sw.className = "statusWrapper";
+      sw.classList.add("statusWrapper");
+   }
+
+   NextView.addCallback(nextView);
+   PreviousView.addCallback(previousView);
+
+   if (!window.location.hash) {
+      window.location.hash = "#player";
    }
 }
 

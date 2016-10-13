@@ -432,22 +432,42 @@ MobileRow = function(songtable, song) {
    else
       this.primary = this.songTable.customColumns[0];
 
+   // the secondary field is emphasized (less so)
+   if (this.songTable.artist)
+      this.secondary = this.songTable.artist;
+   else if (this.songTable.customColumns.length > 1)
+      this.secondary = this.songTable.customColumns[1];
+   else this.secondary = null;
+
    this.element = document.createElement("div");
-   if (this.song === null) {
-      this.element.appendChild(this.getCCElement(this.primary));
-      this.element.lastChild.className = "primaryMobileField";
-   } else {
-      this.element.appendChild(this.getCCElement(this.primary));
-      this.element.lastChild.className = "primaryMobileField";
-   }
    this.element.className = "mobileRow";
-   this.element.appendChild(document.createElement("br"));
-   this.nonPrimary = document.createElement("div");
-   this.nonPrimary.className = "nonPrimaryMobileFieldContainer";
-   this.nonPrimaryList = document.createElement("ul");
-   this.nonPrimary.appendChild(this.nonPrimaryList);
-   this.element.appendChild(this.nonPrimary);
-   this.songTable.customColumns.forEach(cc => { if (cc != this.primary) this.addCustomColumn(cc) });
+
+   // Shaped like:
+   // PrimaryDiv
+   // SecondaryDiv OtherDiv
+
+   this.primaryDiv = document.createElement("div");
+   this.primaryDiv.className = "primaryMobileFieldContainer";
+   this.element.appendChild(this.primaryDiv);
+
+   this.secondaryDiv = document.createElement("div");
+   this.secondaryDiv.className = "secondaryMobileFieldContainer";
+   this.element.appendChild(this.secondaryDiv);
+
+   this.otherDiv = document.createElement("div");
+   this.otherDiv.className = "nonPrimaryMobileFieldContainer";
+   // I'm not sure why I thought that putting other fields in a ul
+   // would be better than just inlining yet more divs. Maybe i was
+   // reading a tutorial that was using <ul>. who knows.
+   this.otherList = document.createElement("ul");
+   this.otherDiv.appendChild(this.otherList);
+
+   this.element.appendChild(this.otherDiv);
+   this.songTable.customColumns.forEach(cc => {
+      if (cc === this.primary) this.addPrimaryColumn(cc);
+      else if (cc === this.secondary) this.addSecondaryColumn(cc);
+      else this.addOtherColumn(cc);
+   });
    this.element.mobileRow = this;
 }
 
@@ -463,15 +483,23 @@ MobileRow.prototype.getCCElement = function(cc) {
    }
 }
 
-MobileRow.prototype.addCustomColumn = function(cc) {
-   if (this.nonPrimaryList.children.length === 0) {
-      this.nonPrimaryList.appendChild(document.createElement("li"));
+MobileRow.prototype.addPrimaryColumn = function(cc) {
+   this.primaryDiv.appendChild(this.getCCElement(cc));
+}
+
+MobileRow.prototype.addSecondaryColumn = function(cc) {
+   this.secondaryDiv.appendChild(this.getCCElement(cc));
+}
+
+MobileRow.prototype.addOtherColumn = function(cc) {
+   if (this.otherList.children.length === 0) {
+      this.otherList.appendChild(document.createElement("li"));
    } else {
       var spacer = document.createElement("div");
       spacer.className = "spacer";
-      this.nonPrimaryList.lastChild.appendChild(spacer);
+      this.otherList.lastChild.appendChild(spacer);
    }
-   this.nonPrimaryList.lastChild.appendChild(this.getCCElement(cc));
+   this.otherList.lastChild.appendChild(this.getCCElement(cc));
 }
 
 MobileRow.prototype.GetElement = function() {

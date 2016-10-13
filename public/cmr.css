@@ -67,7 +67,7 @@ div#titleText {
 div#albumText { font-weight: 200 }
 
 div#plainOlPlayer {
-   border: 5px solid black;
+   border: none;
 }
 
 div#popButtons {
@@ -100,7 +100,7 @@ div#popProgressBar {
 div#plainOlQueueWrapper {
    max-height: 8vmin;
    overflow-y: scroll;
-   border: 5px solid black;
+   border: none;
 }
 
 table#plainOlQueue th {
@@ -178,20 +178,22 @@ tr.songTableHeaderMobile {
    display: none;
 }
 
-div#statusWrapper td {
+div#player td {
    font-size: smaller;
 }
 
-div#statusWrapper {
+div#player {
    background: #2b2b2b;
-   border: 5px solid black;
+   border: none;
 }
 
-div.statusWrapper {
+/*
+div.player {
    position:fixed;
    bottom:0;
    right:0;
 }
+*/
 
 div.statusWrapperMobile {
 }
@@ -204,7 +206,14 @@ div.mobileRow {
    padding-bottom: .2vmin;
 }
 
+div.secondaryMobileFieldContainer {
+   display: inline-block;
+   font-size: smaller;
+   padding-left: 3vmin;
+}
+
 div.nonPrimaryMobileFieldContainer {
+   display: inline-block;
    font-size: smaller;
    font-weight: lighter;
    padding-left: 3vmin;
@@ -222,7 +231,74 @@ div.nonPrimaryMobileFieldContainer ul li div.spacer {
    margin-left: 2vmin;
 }
 
-div.primaryMobileField {
+div.primaryMobileFieldContainer {
+}
+
+@keyframes view-change {
+   0% { transform: scale(0) }
+   50% { transform: scale(.5) }
+   100% { transform: scale(1) }
+}
+
+main {
+   margin-left: auto;
+   margin-right: auto;
+}
+
+#views {
+   position: fixed;
+   width: 100vmin;
+   height: 100vmin;
+   overflow-x: hidden;
+   overflow-y: auto;
+}
+
+#views > * {
+   width: 100vw;
+   bottom: 0;
+   top: 2vmin;
+   position: fixed;
+   margin-left: .5vmin;
+   overflow-y: auto;
+}
+
+#views > .hide-left {
+   opacity: 0;
+   left: -100vw;
+   transition: .3s;
+}
+
+#views > .hide-right {
+   opacity: 0;
+   left: 100vw;
+   transition: .3s;
+}
+
+#views > *:target {
+   left: 0vw;
+   opacity: 1.0;
+   transition: .3s;
+}
+
+nav > ul {
+   list-style-type: none;
+   margin: 0;
+   padding: 0;
+}
+
+nav > ul > li {
+   display: inline;
+}
+
+nav > ul > li:hover {
+   background-color: black;
+}
+
+nav > ul > li > a {
+   color: #4ddb9f;
+   text-align: center;
+   text-decoration: none;
+   padding: 1vmin 1vmin;
 }
 
 /*
