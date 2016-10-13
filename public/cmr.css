@@ -187,14 +187,6 @@ div#player {
    border: none;
 }
 
-/*
-div.player {
-   position:fixed;
-   bottom:0;
-   right:0;
-}
-*/
-
 div.statusWrapperMobile {
 }
 
@@ -300,15 +292,3 @@ nav > ul > li > a {
    text-decoration: none;
    padding: 1vmin 1vmin;
 }
-
-/*
-tr:nth-child(even) {
-   background-color: #2b2b2b;
-   color: #4ddb9f;
-}
-tr:nth-child(odd) {
-   color: #2b2b2b;
-   background-color: #4ddb9f;
-}
-
-*/

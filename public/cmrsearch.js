@@ -195,7 +195,7 @@ function enqueueMatching(field, value, clickedSong) {
    cmus_queue(newQueueStatus);
 }
 
-var ViewList = [ "player", "search", "settings" ];
+var ViewList = [ "player", "search", "fancyPlayer", "settings" ];
 
 function updateViewClasses(previous, direction) {
    var prev = document.getElementById(previous);
