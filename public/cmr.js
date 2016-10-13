@@ -1,10 +1,13 @@
 
-// gets the cmus remote url 
-function cmr ()
-{
-   //return "http://" + window.location.hostname+ ":8000" + "/cmus";
-   return "cmus";
-}
+/*
+ * Key objects to know about. Further comments should be at their
+ * declarations.
+ * - The Events (look for 'new Event')
+ * - PlayerStatus
+ * - StatusTimer
+ * - Backend
+ * - QueueStatus
+ */
 
 function Event(name) {
    this.name = name;
@@ -33,106 +36,344 @@ Event.prototype.getName = function() {
    return this.name;
 }
 
+// ALL EVENTS GO HERE. Until we need more fine-grained ones.
+// Then we'll have to figure something else out.
 var TrackChanged = new Event("TrackChanged");
-var QueueAppend = new Event("QueueAppend");
+var QueueUpdated = new Event("QueueUpdated");
 var NowPaused = new Event("NowPaused");
 var NowPlaying = new Event("NowPlaying");
 var NewPlayerStatus = new Event("NewPlayerStatus");
 var NextView = new Event("NextView");
 var PreviousView = new Event("PreviousView");
 
-// sends a remote command
-function sendCmr (msg, cb)
-{
-   if (cb == null) {
-      cb = newPlayerStatus;
+// This holds the current player status. It's a big object containing
+// stuff like the current track, whether we're playing or paused, the
+// progress of the current track, its duration, etc.
+var PlayerStatus = null;
+
+// Some helpers for PlayerStatus. It would be nice to refactor these so
+// that PlayerStatus is an object with these as members.
+function trackChanged(prev, cur) {
+   if (prev === null && cur !== null) {
+      return true;
    }
-   getCmr (msg, cb);
+   if (prev["artist"] !== cur["artist"]) {
+      return true;
+   } else if (prev["title"] !== cur["title"]) {
+      return true;
+   }
+   return false;
 }
 
-// gets information from the cmus remote
-function getCmr (msg, callback)
+// true if we weren't playing before, but are now
+function nowPlaying(prev, cur) {
+   var playing = (cur !== null && cur["status"] === "playing");
+   var was = (prev !== null && prev["status"] === "playing");
+   return playing && !was;
+}
+
+// true if we WERE playing beofre, but are NOT now
+function nowPaused(prev, cur) {
+   var paused = (cur !== null && cur["status"] !== "playing");
+   var was = (prev !== null && prev["status"] !== "playing");
+   return paused && !was;
+}
+
+// true if passed song is currently playing
+function isCurrentlyPlaying(song) {
+   var t = getPlainOlPlayerSongTable();
+   var current = t.currentSongs;
+   if (current == null && song == null) {
+      return true;
+   }
+   if (current == null) {
+      return false;
+   }
+   if (current.length === 0) {
+      return false;
+   }
+   if (current[0]["path"] === song["path"]) {
+      return true;
+   }
+   return false;
+}
+
+// true if we are playing any song
+function isPlaying() {
+   if (PlayerStatus["status"] === "playing") {
+      return true;
+   } else {
+      return false;
+   }
+}
+
+// List of songs currently in the queue and misc. other infos
+var QueueStatus = null;
+
+// This follows the convention that "public" functions are CapitalFirstCamelCase.
+// "private" functions are lowerFirstCamelCase. So don't call those, bru.
+function BackendImpl() {
+}
+
+BackendImpl.prototype.indicateRequestStart = function() {
+   var s = document.getElementById("status");
+   if (s) s.style.background = "red";
+}
+
+BackendImpl.prototype.indicateRequestFinish = function() {
+   var s = document.getElementById("status");
+   if (s) s.style.background = "";
+}
+
+BackendImpl.prototype.playerStatusReceived = function(response) {
+   var prev = PlayerStatus;
+   PlayerStatus = JSON.parse(response);
+
+   // trigger events
+   if (trackChanged(prev, PlayerStatus)) {
+      TrackChanged.trigger();
+   }
+   if (nowPlaying(prev, PlayerStatus)) {
+      NowPlaying.trigger();
+   }
+   else if (nowPaused(prev, PlayerStatus)) {
+      NowPaused.trigger();
+   }
+
+   NewPlayerStatus.trigger();
+}
+
+
+BackendImpl.prototype.queueStatusReceived = function(response) {
+   QueueStatus = JSON.parse(response);
+   QueueUpdated.trigger();
+}
+
+BackendImpl.prototype.requestAndUpdatePlayerStatus = function(req) {
+   var This = this;
+   var cb = function(response) {
+      This.playerStatusReceived(response);
+   }
+   this.request(req, cb);
+}
+
+BackendImpl.prototype.requestAndUpdateQueueStatus = function(req) {
+   var This = this;
+   var cb = function(response) {
+      This.queueStatusReceived(response);
+   }
+   this.request(req, cb);
+}
+
+// gets the cmus remote url 
+BackendImpl.prototype.serverUrl = function()
 {
-   document.getElementById("status").style.background = "red";
-   var r = new XMLHttpRequest ();
-   var rstr = cmr () + "/" + msg;
+   // NOTE: If you wanted to redirect everything to a different server,
+   // you would do that here.
+   //return "http://" + window.location.hostname+ ":8000" + "/cmus";
+   return "cmus";
+}
+
+BackendImpl.prototype.request = function(req, callback) {
+   this.indicateRequestStart();
+   var r = new XMLHttpRequest();
+   var rstr = this.serverUrl() + "/" + req;
    var cb = callback;
-   r.onreadystatechange = function ()
+   var This = this;
+   r.onreadystatechange = function()
    {
       if (this.readyState === 4)
       {
          if (this.status === 200) {
-            document.getElementById("status").style.background = "";
+            This.indicateRequestFinish();
             if (cb) cb (this.responseText);
          } else {
          }
       }
    }
 
-   r.open ("GET", rstr, true);
+   r.open("GET", rstr, true);
    r.setRequestHeader("Cache-Control", "no-cache");
    //r.setRequestHeader("Content-Type", "text/html");
-   r.send ();
+   r.send();
 }
 
-// basic cmus control functions
-function cmus_play () { sendCmr ("play"); }
-function cmus_pause () { sendCmr ("pause"); }
-function cmus_next () { sendCmr ("next"); }
-function cmus_prev () { sendCmr ("prev"); }
-function cmus_status (callback) { getCmr ("status", callback); }
-function cmus_fav () { getCmr("fav", function(){}); }
-function cmus_f1m(callback) { getCmr("f1m", callback); }
-function cmus_b1m(callback) { getCmr("b1m", callback); }
-function cmus_seekto(num, callback) { getCmr("seekto?" + makeArgs(["s", num]), callback); }
-function cmus_enqueue(path, callback) {
-   sendCmr("enqueue?" + makeArgs(["path", path]),
-         function (statstr) {
-            newPlayerStatus(statstr);
-            if (callback !== null) {
-               cmus_queue(callback);
-            }
-         }
-         );
-}
-function cmus_dequeue(path, callback) {
-   getCmr("dequeue?" + makeArgs(["path", path]), callback);
-}
-function cmus_currentToPlaylist(pl) {
-   getCmr("addPlaylist?" + makeArgs(["name", pl]), function(){});
-}
-function cmus_pathToPlaylist(pl, path) {
-   getCmr("addPlaylist?" + makeArgs(["name", pl, 'path', path]), function(){});
-}
-function cmus_topqueue(path, callback) {
-   getCmr("topqueue?" + makeArgs(["path", path]), callback);
+BackendImpl.prototype.Play = function () {
+   this.requestAndUpdatePlayerStatus("play");
 }
 
-// get current playlist
-function cmus_playlist (callback) { getCmr("playlist", callback); }
-// get current queue
-function cmus_queue (callback) { getCmr("queue", callback); }
+BackendImpl.prototype.Pause = function () {
+   this.requestAndUpdatePlayerStatus("pause");
+}
 
+BackendImpl.prototype.NextSong = function() {
+   this.requestAndUpdatePlayerStatus("next");
+}
+
+BackendImpl.prototype.PreviousSong = function() {
+   this.requestAndUpdatePlayerStatus("prev");
+}
+
+// You probably shouldn't be calling this, because
+// if you supply a callback, you will get the
+// raw status response from the backend passed to
+// your callback. You'd probably rather call
+// UpdatePlayerStatus() and response to NewPlayerStatus
+// event.
+BackendImpl.prototype.GetPlayerStatus = function(callback) {
+   this.request("status", callback);
+}
+
+BackendImpl.prototype.UpdatePlayerStatus = function() {
+   this.requestAndUpdatePlayerStatus("status");
+}
+
+BackendImpl.prototype.UpdateQueueStatus = function() {
+   this.requestAndUpdateQueueStatus("queue");
+}
+
+BackendImpl.prototype.FavoriteCurrentSong = function() {
+   this.request("fav", function(){}); // elicits no response
+}
+
+BackendImpl.prototype.SeekForward1Minute = function() {
+   this.requestAndUpdatePlayerStatus("f1m");
+}
+
+BackendImpl.prototype.SeekBackward1Minute = function() {
+   this.requestAndUpdatePlayerStatus("b1m");
+}
+
+BackendImpl.prototype.SeekToSecond = function(second) {
+   this.requestAndUpdatePlayerStatus("seekto?" + makeArgs(["s", second]));
+}
+
+// pl is just a name. It would be nice if playlists became "objects" in
+// the same sense that a song is an object.
+BackendImpl.prototype.AddCurrentSongToPlaylist = function(pl) {
+   this.request("addPlaylist?" + makeArgs(["name", pl]), function(){});
+}
+
+BackendImpl.prototype.AddSongToPlaylist = function(song, pl) {
+   this.request("addPlaylist?" + makeArgs(["name", pl, 'path', song["path"]]), function(){});
+}
+
+BackendImpl.prototype.MoveSongToTopOfQueue = function(song) {
+   this.requestAndUpdateQueueStatus("topqueue?" + makeArgs(["path", song['path']]));
+}
+
+// TODO: It might be nice to enqueue a song without triggering callbacks, or
+// enqueue multiple songs at once.
+BackendImpl.prototype.EnqueueSong = function(song) {
+   this.requestAndUpdateQueueStatus("enqueue?" + makeArgs(["path", song["path"]]));
+}
+
+BackendImpl.prototype.DequeueSong = function(song) {
+   this.requestAndUpdateQueueStatus("dequeue?" + makeArgs(["path", song["path"]]));
+}
+
+// I don't remember the format of the response. Probably { songs: [ song1, song2, ... ] }
+BackendImpl.prototype.GetCurrentPlaylist = function(callback) {
+   this.request("playlist", callback);
+}
+
+BackendImpl.prototype.RunServerSideTool = function(name, argstring, callback) {
+   this.request("tool?" + makeArgs([name, argstring]), callback);
+}
+
+// returns newline-separated playlist names
+BackendImpl.prototype.GetPlaylists = function(callback) {
+   this.request("listPlaylist", callback);
+}
+
+// returns something like { songs: [ song1, song2, ... ] }
+BackendImpl.prototype.SearchForSongs = function(query, callback) {
+   this.request("search?" + makeArgs(["q", query]), callback);
+}
+
+// same return as SearchForSongs
+BackendImpl.prototype.GetRandomSongs = function(number, callback) {
+   this.request("random?" + makeArgs(["n", number]), callback);
+}
+
+BackendImpl.prototype.GetPlaylistSongs = function(playlist, callback) {
+   this.request("getPlaylist?" + makeArgs(["name", playlist]), callback);
+}
+
+var Backend = new BackendImpl();
+
+// StatusTimer is responsible for updating the player status while a track is playing.
+// It is designed to provide the illusion of a constantly-updating PlayerStatus, but
+// without requiring us to constantly send requests to Backend.
+// It would be nice to refactor StatusTimer into a class, or perhaps factor its code
+// into PlayerStatus whenever PlayerStatus becomes a class.
+var StatusTimer = null;
+
+function whilePlaying() {
+   StatusTimer = null;
+   var s = getPlayerStatus();
+   var pos = parseInt(s["position"]);
+   var dur = parseInt(s["duration"]);
+   if (pos % 10 === 0 || pos >= dur) {
+      Backend.GetPlayerStatus(whilePlayingStatusReceived);
+   } else {
+      // rather than hammer the the backend every second, just add 1 second.
+      s["position"] = (pos + 1) + '';
+      StatusTimer = setTimeout(whilePlaying, 1000);
+      NewPlayerStatus.trigger();
+   }
+}
+
+function whilePlayingStatusReceived(statstr) {
+   // A rare case where it makes sense to call a "private" Backend
+   // function directly.
+   Backend.playerStatusReceived(statstr);
+   // if we're still playing, get status again in a second.
+   // If we are stopped between now and then, StatusTimer
+   // will be cleared.
+   if (isPlaying()) {
+      if (StatusTimer != null) clearTimeout(StatusTimer);
+      StatusTimer = setTimeout(whilePlaying, 1000);
+   }
+}
+
+function initStatusTimer() {
+   // when we start playing, call whilePlaying() every second.
+   NowPlaying.addCallback(function() {
+      if (StatusTimer == null ) {
+         StatusTimer = setTimeout(whilePlaying, 1000);
+      }
+   });
+
+   // when we stop playing, don't call whilePlaying() anymore.
+   NowPaused.addCallback(function() {
+      if (StatusTimer != null) {
+         clearTimeout(StatusTimer);
+         StatusTimer = null;
+      }
+   });
+}
+
+// This is weird code bcause it's basically here just so that cmrui.js can call it.
+// cmrui.js pre-dates the Backend object, so it could use some updating.
 var BTN_PLAYING = "playing";
 var BTN_PAUSED = "paused";
 function playPauseClick () {
    if (getPlayerStatus ()["status"] === BTN_PAUSED) {
-      cmus_play ();
+      Backend.Play();
    }
    else if (getPlayerStatus ()["status"] === BTN_PLAYING) {
-      cmus_pause ();
+      Backend.Pause();
    }
 }
 
 function nextClick () {
-   cmus_next ();
+   Backend.NextSong();
 }
 
 function prevClick () {
-   cmus_prev ();
+   Backend.PreviousSong();
 }
-
-var PlayerStatus = null;
 
 function getPlayerStatus () {
    return PlayerStatus;
@@ -180,12 +421,12 @@ function getPlainOlPlayerSongTable() {
       if (!window.mobilecheck()) {
          var bm = new CustomColumn("");
          bm.Text(song => "-1m");
-         bm.Button(song => cmus_b1m(newPlayerStatus));
+         bm.Button(song => Backend.SeekBackward1Minute());
          t.AddCustomColumn(bm);
 
          var fm = new CustomColumn("");
          fm.Text(song => "+1m");
-         fm.Button(song => cmus_f1m(newPlayerStatus));
+         fm.Button(song => Backend.SeekForward1Minute());
          t.AddCustomColumn(fm);
 
          var g2 = new CustomColumn("");
@@ -194,14 +435,14 @@ function getPlainOlPlayerSongTable() {
             var pos = window.prompt("Position in seconds:", "0");
             if (pos != null)
             {
-               cmus_seekto(pos, newPlayerStatus);
+               Backend.SeekToSecond(pos);
             }
          });
          t.AddCustomColumn(g2);
 
          var next = new CustomColumn("");
          next.Text(song => "Next");
-         next.Button(song => cmus_next());
+         next.Button(song => backend.NextSong());
          t.AddCustomColumn(next);
       } else {
          document.getElementById("popTable").className = "popTableMobile";
@@ -215,24 +456,6 @@ function makeCmusButton(text, fn) {
    b.onclick = fn;
    b.appendChild(document.createTextNode(text));
    return b;
-}
-
-function isCurrentlyPlaying(song) {
-   var t = getPlainOlPlayerSongTable();
-   var current = t.currentSongs;
-   if (current == null && song == null) {
-      return true;
-   }
-   if (current == null) {
-      return false;
-   }
-   if (current.length === 0) {
-      return false;
-   }
-   if (current[0]["path"] === song["path"]) {
-      return true;
-   }
-   return false;
 }
 
 function updatePlainOlPlayer() {
@@ -262,34 +485,9 @@ function updatePlainOlPlayer() {
    document.title = "PoP: " + s["title"] + " - " + s["artist"] + s["path"];
 }
 
-function trackChanged(prev, cur) {
-   if (prev === null && cur !== null) {
-      return true;
-   }
-   if (prev["artist"] !== cur["artist"]) {
-      return true;
-   } else if (prev["title"] !== cur["title"]) {
-      return true;
-   }
-   return false;
-}
-
-function nowPlaying(prev, cur) {
-   var playing = (cur !== null && cur["status"] === "playing");
-   var was = (prev !== null && prev["status"] === "playing");
-   return playing && !was;
-}
-
-function nowPaused(prev, cur) {
-   var paused = (cur !== null && cur["status"] !== "playing");
-   var was = (prev !== null && prev["status"] !== "playing");
-   return paused && !was;
-}
-
 function newPlayerStatus(statStr) {
    var prev = PlayerStatus;
    PlayerStatus = JSON.parse (statStr);
-   updatePlainOlPlayer();
 
    // trigger events
    if (trackChanged(prev, PlayerStatus)) {
@@ -315,14 +513,10 @@ function toolCallback(msg) {
    }
 }
 
-function runTool(name, argstring) {
-   getCmr("tool?" + makeArgs([name, argstring]), toolCallback);
-}
-
 function makeToolButton(text, tool, argstring) {
    var b = document.createElement("button");
    b.appendChild(document.createTextNode(text));
-   b.onclick = () => runTool(tool, argstring);
+   b.onclick = () => Backend.RunServerSideTool(tool, argstring, toolCallback);
    return b;
 }
 
@@ -334,7 +528,6 @@ function toolsInit() {
    //t.appendChild(makeToolButton("Fix Chromecast", "fixchromecast", ""));
 }
 
-var QueueStatus = null;
 var QueueSongTable = null;
 
 function getPlainOlQueue() {
@@ -372,7 +565,7 @@ function plainOlQueueInit() {
    if (buttons !== null) {
       var b = document.createElement("button");
       b.appendChild(document.createTextNode("refresh"));
-      b.onclick = evt => cmus_queue(newQueueStatus);
+      b.onclick = evt => Backend.UpdateQueueStatus();
       buttons.appendChild(b);
    }
 
@@ -389,21 +582,21 @@ function plainOlQueueInit() {
    menu.GetCurrentAction = function() { return this.actions.current; };
 
    menu.actions.remove = (evt, songs) => {
-      songs.forEach(s => cmus_dequeue(s['path'], null));
-      cmus_queue(newQueueStatus); // refresh status after dequeueing everything
+      songs.forEach(s => Backend.DequeueSong(s));
+      Backend.UpdateQueueStatus(); // refresh status after dequeueing everything
    };
    menu.actionList.push(menu.actions.remove);
 
    menu.actions.pladd = (evt, songs) => {
       selectPlaylist(evt.pageX, evt.pageY, function(playlist) {
-         songs.forEach(s => cmus_pathToPlaylist(playlist, s['path']));
+         songs.forEach(s => Backend.AddSongToPlaylist(s, playlist));
       });
    };
    menu.actionList.push(menu.actions.pladd);
 
    menu.actions.playnext = (evt, songs) => {
-      songs.forEach(s => cmus_topqueue(s['path'], null));
-      cmus_queue(newQueueStatus); // refresh status once at end
+      songs.forEach(s => Backend.MoveSongToTopOfQueue(s));
+      Backend.UpdateQueueStatus(); // refresh status once at end
    }
    menu.actionList.push(menu.actions.playnext);
 
@@ -442,7 +635,7 @@ function plainOlQueueInit() {
    var cols = [q.artist, q.album, q.title];
    q.ModifyColumnsIcon(cols, "arrow-up");
 
-   cmus_queue(newQueueStatus);
+   Backend.UpdateQueueStatus();
 }
 
 function getQueueStatus() {
@@ -461,41 +654,6 @@ function updatePlainOlQueue() {
    q.SetSongs(s["songs"]);
 }
 
-function newQueueStatus(statStr) {
-   QueueStatus = JSON.parse(statStr);
-   updatePlainOlQueue();
-}
-
-var StatusTimer = null;
-
-function whilePlaying() {
-   StatusTimer = null;
-   var s = getPlayerStatus();
-   var pos = parseInt(s["position"]);
-   var dur = parseInt(s["duration"]);
-   if (pos % 10 === 0 || pos >= dur) {
-      cmus_status(whilePlayingStatus);
-   } else {
-      // rather than hammer the the backend every second, just add 1 second.
-      s["position"] = (pos + 1) + '';
-      StatusTimer = setTimeout(whilePlaying, 1000);
-      // need to get PoP using NewPlayerStatus
-      updatePlainOlPlayer();
-      NewPlayerStatus.trigger();
-   }
-}
-
-function whilePlayingStatus(statstr) {
-   newPlayerStatus(statstr);
-   // if we're still playing, get status again in a second.
-   // If we are stopped between now and then, StatusTimer
-   // will be cleared.
-   if (getPlayerStatus()["status"] === "playing") {
-      if (StatusTimer != null) clearTimeout(StatusTimer);
-      StatusTimer = setTimeout(whilePlaying, 1000);
-   }
-}
-
 function keyupHandler(evt) {
    var focused = document.activeElement;
    if (focused.nodeName === "TEXTAREA" ||
@@ -503,9 +661,9 @@ function keyupHandler(evt) {
    {
    } else {
       if (evt.which == 67) { // letter c
-         cmus_pause();
+         Backend.Pause();
       } else if (evt.which == 66) { // letter b
-         cmus_next();
+         Backend.NextSong();
       } else if (evt.which === 37) {
          PreviousView.trigger();
       } else if (evt.which === 39) {
@@ -520,25 +678,16 @@ function keyupHandler(evt) {
    }
 }
 
+// NOTE: This function has become the de facto "initialize everything in cmr.js" function
 function plainOlPlayerInit() {
-   NowPlaying.addCallback(function() {
-      if (StatusTimer == null ) {
-         StatusTimer = setTimeout(whilePlaying, 1000);
-      }
-   });
-   NowPaused.addCallback(function() {
-      if (StatusTimer != null) {
-         clearTimeout(StatusTimer);
-         StatusTimer = null;
-      }
-   });
+   initStatusTimer();
 
    var btns = document.getElementById("popButtons");
-   btns.appendChild(makeCmusButton("Play", cmus_play));
-   btns.appendChild(makeCmusButton("Pause", cmus_pause));
-   btns.appendChild(makeCmusButton("Next", cmus_next));
-   btns.appendChild(makeCmusButton("Previous", cmus_prev));
-   btns.appendChild(makeCmusButton("fav", cmus_fav));
+   btns.appendChild(makeCmusButton("Play", () => Backend.Play()));
+   btns.appendChild(makeCmusButton("Pause", () => Backend.Pause()));
+   btns.appendChild(makeCmusButton("Next", () => Backend.NextSong()));
+   btns.appendChild(makeCmusButton("Previous", () => Backend.PreviousSong()));
+   btns.appendChild(makeCmusButton("fav", () => Backend.FavoriteCurrentSong()));
    btns.appendChild(makeCmusButton("add to playlist...", addToPlaylistClick));
    btns.appendChild(makeCmusButton("TOP", function() {
       window.scrollBy(0, 0 - window.pageYOffset);
@@ -557,11 +706,13 @@ function plainOlPlayerInit() {
          var x = evt.offsetX;
          var pos = evt.offsetX / prog.offsetWidth;
          pos = Math.round(pos * s['duration']);
-         cmus_seekto(pos, newPlayerStatus);
+         Backend.SeekToSecond(pos);
       }
    }}(prog);
 
-   cmus_status(newPlayerStatus);
+   NewPlayerStatus.addCallback(updatePlainOlPlayer);
+   QueueUpdated.addCallback(updatePlainOlQueue);
+   Backend.UpdatePlayerStatus();
    document.addEventListener("keyup", keyupHandler, false);
 }
 
@@ -632,7 +783,7 @@ function playlistsLoaded(playlists, x, y, onPlClick) {
 function noOp() {}
 
 function selectPlaylist(x, y, callback) {
-   getCmr("listPlaylist", response => {
+   Backend.GetPlaylists(response => {
       var playlists = response.split("\n");
       playlistsLoaded(playlists, x, y - 200, callback);
    });
@@ -641,7 +792,7 @@ function selectPlaylist(x, y, callback) {
 function addToPlaylistClick(evt) {
    var x = evt.clientX;
    var y = evt.clientY;
-   selectPlaylist(evt.pageX, evt.pageY, pl => cmus_currentToPlaylist(pl));
+   selectPlaylist(evt.pageX, evt.pageY, pl => Backend.AddCurrentSongToPlaylist(pl));
 }
 
 function selectString(strings, icons, x, y, cb) {

@@ -13,7 +13,7 @@ SongTable = function(tableId, defaultColumns) {
    // by default, the button says 'Enqueue' and adds the song to the current play queue
    this.buttonText = "Enqueue";
    this.onButtonClick = function(song) {
-      return function() { cmus_enqueue(song['path'], newQueueStatus); }
+      return function() { Backend.EnqueueSong(song); }
    }
    this.cookieStore = "";
 }
