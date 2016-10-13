@@ -23,4 +23,11 @@ c/b buttons pause and play-next, respectively (this matches the behavior of `cmu
 This project basically exists to make my pretty-goddern-big music collection as accessible as possible not only to me, but my shell-averse girlfriend.
 It's also kinda fun to use a throw-and-go language like javascript instead of C++ (which I would say I _am_ fluent in).
 
+I am loathe to load _any_ library unnecessarily. No jQuery, lodash, or jflip[^naw] here. I'll probably add QuoJS to support swipes.
+
+
 `- Augy`
+
+P.S.: The navbar at the top doesn't play nice; you're meant to use the left/right arrows. Maybe I'll fix that soon.
+
+[^naw]:  I made that one up, but I'll bet you thought it was real for a second.
