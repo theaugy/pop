@@ -25,12 +25,12 @@ function queryCallback(response) {
 
 function querySubmit() {
    var q = document.getElementById("queryInput").value;
-   getCmr("search?" + makeArgs(["q", q]), queryCallback);
+   Backend.SearchForSongs(q, queryCallback);
 }
 
 function querySubmit1(field, midfix, text) {
-   //getCmr("search?" + makeArgs(["q", "artist::^a"]), queryCallback);
-   getCmr("search?" + makeArgs(["q", field + midfix + text ]), queryCallback);
+   //getCmr("search?" + makeArgs(["q", field + midfix + text ]), queryCallback);
+   Backend.SearchForSongs(field + midifx + text, queryCallback);
 }
 
 function makeLetter(letter, combo)
@@ -106,19 +106,19 @@ function artistClick(evt) {
    letter.style.left = evt.clientX;
    letter.tabIndex = "0";
    letter.focus();
-   letter.onblur = () => document.getElementById("submitWrapper").removeChild(letter);
-   document.getElementById("submitWrapper").appendChild(letter);
+   letter.onblur = () => document.getElementById("search").removeChild(letter);
+   document.getElementById("search").appendChild(letter);
 }
 
 function randomClick(evt) {
-   getCmr("random?" + makeArgs(["n", "50"]), queryCallback);
+   Backend.GetRandomSongs(50, queryCallback);
 }
 
 function releaseYearClick(evt) {
    var p = new Picker({ year: true, month: false, day: false });
    p.SetCallback(function() {
       q = "year:" + p.GetYear();
-      getCmr("search?" + makeArgs(["q", q]), queryCallback);
+      Backend.SearchForSongs(q, queryCallback);
    });
    var div = p.Make();
    div.style.position = "absolute";
@@ -131,7 +131,7 @@ function dateAddedClick(evt) {
    var p = new Picker({ year: true, month: true, day: true });
    p.SetCallback(function() {
       q = "added:" + p.GetYear() + "-" +  p.GetMonth() + "-" + p.GetDay();
-      getCmr("search?" + makeArgs(["q", q]), queryCallback);
+      Backend.SearchForSongs(q, queryCallback);
    });
    var div = p.Make();
    div.style.position = "absolute";
@@ -144,7 +144,7 @@ function monthAddedClick(evt) {
    var p = new Picker({ year: true, month: true, day: false });
    p.SetCallback(function() {
       q = "added:" + p.GetYear() + "-" +  p.GetMonth() + " album+";
-      getCmr("search?" + makeArgs(["q", q]), queryCallback);
+      Backend.SearchForSongs(q, queryCallback);
    });
    var div = p.Make();
    div.style.position = "absolute";
@@ -166,16 +166,15 @@ function lastThirtyClick(evt) {
    if (d > 28) {
       d = 28;
    }
-   getCmr("search?" + makeArgs(["q",
-                                "added:" + y + "-" + m + "-" + d + ".. album+"]),
-          queryCallback);
+   var q = "added:" + y + "-" + m + "-" + d + ".. album+";
+   Backend.SearchForSongs(q, queryCallback);
 }
 
 function loadPlaylistClick(evt) {
    var x = evt.clientX;
    var y = evt.clientY;
    selectPlaylist(evt.pageX, evt.pageY,
-         pl => getCmr("getPlaylist?" + makeArgs(["name", pl]), queryCallback));
+         pl => Backend.GetPlaylistSongs(pl, queryCallback));
 }
 
 function enqueueMatching(field, value, clickedSong) {
@@ -186,13 +185,60 @@ function enqueueMatching(field, value, clickedSong) {
          foundMatch = true; // start at the clicked song
       }
       if (foundMatch && ResultsSongTable.currentSongs[i][field] === value) {
-         // don't bother doing callbacks for the queue here; we'll do it once at the end
-         cmus_enqueue(ResultsSongTable.currentSongs[i]['path'], null);
+         Backend.EnqueueSong(ResultsSongTable.currentSongs[i]);
       } else if (foundMatch) {
          break; // first non-match after the original breaks
       }
    }
-   cmus_queue(newQueueStatus);
+}
+
+var ViewList = [ "player", "search", "fancyPlayer", "settings" ];
+
+function updateViewClasses(previous, direction) {
+   var prev = document.getElementById(previous);
+   var next = document.getElementById(window.location.hash.substr(1));
+   if (direction === "left") {
+      prev.classList.add("hide-right");
+   } else {
+      prev.classList.add("hide-left");
+   }
+   if (next.classList.contains("hide-left"))
+      next.classList.remove("hide-left");
+   if (next.classList.contains("hide-right"))
+      next.classList.remove("hide-right");
+}
+
+function previousView() {
+   var current = window.location.hash.substr(1);
+   var last = "";
+   var changed = false;
+   ViewList.forEach(view => { if (view === current) {
+      if (last !== "") {
+         window.location.href = "#" + last;
+         changed = true;
+      }
+   }
+   last = view;
+   });
+   if (changed) {
+      updateViewClasses(current, "left");
+   }
+}
+
+function nextView() {
+   var current = window.location.hash.substr(1);
+   var doNext = false;
+   var changed = false;
+   ViewList.forEach(view => { if (view === current) {
+      doNext = true;
+   } else if (doNext === true) {
+      window.location.href = "#" + view;
+      doNext = false;
+      changed = true;
+   }});
+   if (changed) {
+      updateViewClasses(current, "right");
+   }
 }
 
 function cmrsearchInit() {
@@ -213,7 +259,7 @@ function cmrsearchInit() {
    }
    if (ResultsSongTable.title) {
       ResultsSongTable.title.Button(
-            (song, evt) => cmus_enqueue(song['path'], newQueueStatus));
+            (song, evt) => Backend.EnqueueSong(song));
       ResultsSongTable.title.Icon("plus");
       ResultsSongTable.title.buttonAppliesToMatches = true;
    }
@@ -243,7 +289,7 @@ function cmrsearchInit() {
    plainOlQueueInit();
    toolsInit();
 
-   TrackChanged.addCallback(() => cmus_queue(newQueueStatus));
+   TrackChanged.addCallback(() => Backend.UpdateQueueStatus());
 
    var btns = document.getElementById("popButtons");
    btns.appendChild(makeCmusButton("get history", function(evt) {
@@ -268,7 +314,7 @@ function cmrsearchInit() {
       } else {
          vis = true; // no fancy UI. always need the player.
       }
-      var sw = document.getElementById("statusWrapper");
+      var sw = document.getElementById("player");
       if (vis) {
          sw.style.display = "";
       } else {
@@ -276,14 +322,21 @@ function cmrsearchInit() {
       }
    };
 
-   var sw = document.getElementById("statusWrapper");
+   var sw = document.getElementById("player");
    if (window.mobilecheck()) {
-      sw.className = "statusWrapperMobile";
+      sw.classList.add("statusWrapperMobile");
       document.getElementById("queryInput").className = "inputMobile";
       document.getElementById("plainOlQueue").className = "plainOlQueueMobile";
       document.getElementById("tools").className = "toolsMobile";
    } else {
-      sw.className = "statusWrapper";
+      sw.classList.add("statusWrapper");
+   }
+
+   NextView.addCallback(nextView);
+   PreviousView.addCallback(previousView);
+
+   if (!window.location.hash) {
+      window.location.hash = "#player";
    }
 }
 

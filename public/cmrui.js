@@ -1,4 +1,20 @@
-
+/*
+ * This file pre-dates a lot of the nice stuff that has been
+ * developed for cmrsearch.html. It has fallen by the wayside
+ * since I developed the table-based player, which is just more
+ * useful for everyday library playback and management. With
+ * the new "views" design, it is now practical to have this
+ * player available all the time again, so maybe it'll get
+ * some more love soon.
+ * One thing I do like about it is that it is pretty focused
+ * on the UI side of things. While cmrsearch.js is a mixture
+ * of UI and "business" code, this code relies pretty heavily
+ * on cmr.js to provide it with businessy stuff like playPauseClick()
+ * as opposed to figuring that stuff out for itself. Which couples
+ * the files together pretty tightly, but keeps cmrui.js clean.
+ * As I recall, there is some pretty significant work to be done
+ * to make this code scale better to different view sizes.
+ */
 
 function getUiCanvas ()
 {
@@ -504,8 +520,6 @@ function drawPrevButton (playerCanvas, playerCtx)
 }
 
 function cmrinit () {
-   document.getElementById ("playerui").setAttribute ("width", window.innerWidth - 35);
-   document.getElementById ("playerui").setAttribute ("height", window.innerHeight);
    document.getElementById ("nextButton").addEventListener ('click', nextClick);
    document.getElementById ("prevButton").addEventListener ('click', prevClick);
    document.getElementById ("playButton").addEventListener ('click', playPauseClick);

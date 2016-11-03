@@ -15,22 +15,18 @@
    </head>
 
    <body>
-      <!--
-      <div id="playerWrapper">
-         <canvas id="playerui" width="800" height="600"></canvas>
-         <div id="artistText" class="text overlay"></div>
-         <div id="titleText" class="text overlay"></div>
-         <div id="albumText" class="text overlay"></div>
-         <div id="durationText" class="text overlay"></div>
-         <div id="playButton" class="overlay"><canvas></canvas></div>
-         <div id="nextButton" class="overlay"><canvas></canvas></div>
-         <div id="prevButton" class="overlay"><canvas></canvas></div>
-      </div>
-      -->
-      <!--<i class="fa fa-life-ring"></i>-->
-      <div id="status"</div>
-      <div id="tools"></div>
-      <div id="statusWrapper">
+      <nav role="navigation">
+         <ul>
+            <li><a href="#player">Player</a></li>
+            <li><a href="#search">Search</a></li>
+            <li><a href="#fancyPlayer">Fancy</a></li>
+            <li><a href="#settings">Settings</a></li>
+         </ul>
+      </nav>
+      <main>
+      <div id="views">
+      <div id="player" class="hide-right">
+         <h1>Player</h1>
          <div>
             <table id="popTable"></table>
             <div id="popProgress">
@@ -44,23 +40,38 @@
             <table id="plainOlQueue"></table>
          </div>
       </div>
-      <input id="queryInput" type="text" name="query">
-      <div id="submitWrapper">
+      <div id="search" class="hide-right">
+         <h1>Search</h1>
+         <input id="queryInput" type="text" name="query">
          <button type="button" id="searchbtn">search</button>
          <button type="button" id="artistbtn">artist...</button>
          <button type="button" id="randombtn">random</button>
-         <button type="button" id="dateadded">date added...</button>
+         <button type="button" id="dateadded" class="extraStuff">date added...</button>
          <button type="button" id="monthadded">month added...</button>
          <button type="button" id="lastthirty">last 30 days</button>
-         <button type="button" id="releaseyear">release year...</button>
+         <button type="button" id="releaseyear" class="extraStuff">release year...</button>
          <button type="button" id="loadplaylist">load playlist...</button>
          <button type="button" id="back">back</button>
          <button type="button" id="forward">forward</button>
-      </div>
-      <br/>
-      <div id="resultWrapper">
          <table id="resultList" class="cmrlist"></table>
       </div>
+      <div id="fancyPlayer" class="hide-right">
+         <canvas id="playerui"></canvas>
+         <div id="artistText" class="text overlay"></div>
+         <div id="titleText" class="text overlay"></div>
+         <div id="albumText" class="text overlay"></div>
+         <div id="durationText" class="text overlay"></div>
+         <div id="playButton" class="overlay"><canvas></canvas></div>
+         <div id="nextButton" class="overlay"><canvas></canvas></div>
+         <div id="prevButton" class="overlay"><canvas></canvas></div>
+      </div>
+      <div id="settings" class="hide-right">
+         <h1>Settings</h1>
+         <div id="status"></div>
+         <div id="tools"></div>
+      </div>
+      </div> <!-- views -->
+      </main>
    </body>
 
    <script src="cmrsearchinit.js"></script>

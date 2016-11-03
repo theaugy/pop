@@ -285,7 +285,7 @@ class CmrRequest (BaseHTTPRequestHandler):
                if name == "path":
                    print "enqueueing %s" % (value)
                    print s._cmrGet(["-q", value])
-                   s.wfile.write(s.cmus_status());
+                   s.wfile.write(s.cmus_queue());
            return True
        elif parsed.path.startswith("/cmus/dequeue"):
            query = urlparse.parse_qsl(parsed.query)
