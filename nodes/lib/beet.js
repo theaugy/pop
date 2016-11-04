@@ -72,7 +72,7 @@ const beetProto = {
       }
       var output = spawn(this.beetPath(), ['ls', '--format=$path'].concat(q.split(/\s+/)));
       var songs = this.outputToSongs(output);
-      LOG.info("Querying for " + q + " returned " + songs.lenth + " songs");
+      LOG.info("Querying for " + q + " returned " + songs.length + " songs");
       return QUERY.makeQueryResult(q, songs);
    },
    ArtistStartQuery: function(letter) {

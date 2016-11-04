@@ -53,7 +53,7 @@ const seekProto = {
       spawn(this.cmus.CmusRemotePath(), ['-C', 'seek -' + numSeconds + 's']);
    },
    To: function(offsetSeconds) {
-      spawn(this.cmus.CmusRemotePath(), ['-C', 'seek ' + offset + 's']);
+      spawn(this.cmus.CmusRemotePath(), ['-C', 'seek ' + offsetSeconds + 's']);
    },
    cmus: null
 };
@@ -107,7 +107,7 @@ const cmusProto = {
       this.clearQueue();
       var This = this;
       // re-add each song that does not match
-      current.songList.forEach(function(song) {
+      current.songs.forEach(function(song) {
          if (song.path !== path) {
             This.enqueue(song.path);
          }
@@ -119,7 +119,7 @@ const cmusProto = {
       this.clearQueue();
       this.enqueue(path);
       var This = this;
-      current.songList.forEach(function(song) {
+      current.songs.forEach(function(song) {
          if (song.path !== path) {
             This.enqueue(song.path);
          }
