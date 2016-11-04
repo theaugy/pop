@@ -1,4 +1,5 @@
 const SAFETY = require('../lib/safety.js');
+const LOG = require('../lib/log.js');
 
 const songProto = {
    title: null,

@@ -1,15 +1,16 @@
 const spawn = require('child_process').spawnSync;
 const SAFETY = require('../lib/safety.js');
 const LOG = require('../lib/log.js');
+const SONG = require('../lib/song.js');
 
 const queueStatusProto = {
-   songList: []
+   songs: []
 };
 
 function makeQueueStatus(songList) {
    var ret = Object.create(queueStatusProto);
    SAFETY.ensureDefined([songList], ['songList']);
-   ret.songList = songList;
+   ret.songs = songList;
    return ret;
 }
 
@@ -28,15 +29,14 @@ function makePlayerStatus(args)
       return false;
    }
    args.forEach((arg) => {
-      if (!tryMatch(arg, "status", /status (\w+)/) ||
-            tryMatch(arg, "duration", /duration (\d+)/) ||
-            tryMatch(arg, "position", /position (\d+)/) ||
-            tryMatch(arg, "artist", /tag artist (.+)/) ||
-            tryMatch(arg, "album", /tag album (.+)/) ||
-            tryMatch(arg, "title", /tag title (.+)/) ||
-            tryMatch(arg, "shuffle", /set shuffle (\w+)/) ||
-            tryMatch(arg, "path", /^file (.+)/)) {
-         LOG.error("Unable to parse cmus player status argument: " + arg);
+      if (!tryMatch(arg, "status", /status (\w+)/) &&
+            !tryMatch(arg, "duration", /duration (\d+)/) &&
+            !tryMatch(arg, "position", /position (\d+)/) &&
+            !tryMatch(arg, "artist", /tag artist (.+)/) &&
+            !tryMatch(arg, "album", /tag album (.+)/) &&
+            !tryMatch(arg, "title", /tag title (.+)/) &&
+            !tryMatch(arg, "shuffle", /set shuffle (\w+)/) &&
+            !tryMatch(arg, "path", /^file (.+)/)) {
       }});
 
    SAFETY.ensureDefined(
@@ -51,11 +51,11 @@ const seekProto = {
    },
    Backward: function(numSeconds) {
       spawn(this.cmus.CmusRemotePath(), ['-C', 'seek -' + numSeconds + 's']);
-   }
+   },
    To: function(offsetSeconds) {
       spawn(this.cmus.CmusRemotePath(), ['-C', 'seek ' + offset + 's']);
-   }
-   cmus: null;
+   },
+   cmus: null
 };
 
 const makeSeek = function(cmus) {
@@ -72,14 +72,15 @@ const cmusProto = {
       var output = spawn(this.CmusRemotePath(), ["-C", "save -q -" ]);
       var paths = output.stdout.toString();
       paths = paths.split("\n");
+      LOG.info("Returning queue status with " + paths.length + " paths");
       return makeQueueStatus(this.PathsToSongs(paths));
    },
    PlayerStatus: function() {
-      var output = spawn(this.CmusRemotePath(), ["-C", "save -q -" ]);
+      var output = spawn(this.CmusRemotePath(), ["-Q"]);
       var lines = output.stdout.toString();
       lines = lines.split("\n");
       return makePlayerStatus(lines);
-   }
+   },
    PathToSong: function(path) {
       return SONG.parseSong(path);
    },
@@ -132,7 +133,7 @@ const cmusProto = {
       paths = paths.split("\n");
       return makeQueueStatus(this.PathsToSongs(paths));
    },
-   Seek: null;
+   Seek: null,
    Play: function() {
       spawn(this.CmusRemotePath(), ['--play']);
    },

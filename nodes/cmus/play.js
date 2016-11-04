@@ -1,6 +1,5 @@
-#!/usr/bin/nodejs
-
 const CMUS = require('../lib/cmus.js');
+const J = JSON.stringify;
 var cmus = CMUS.makeCmus();
 cmus.Play();
-console.log(JSON.stringify(cmus.PlayerStatus()));
+console.log(J(cmus.PlayerStatus()));

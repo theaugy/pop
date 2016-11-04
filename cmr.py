@@ -12,17 +12,6 @@ import urllib
 class CmrRequest (BaseHTTPRequestHandler):
    success = 0
    failure = 0
-   cmus = "cmus-remote"
-   beet = "beet"
-   artistFirstLetter = "../private/bash-scripts/artist-first-letter.sh"
-   getRandom = "../private/bash-scripts/random-tracks.sh"
-   favCurrent = "../private/bash-scripts/favorite-current.sh"
-   addCurrent = "../private/bash-scripts/add-current.sh"
-   addPath = "../private/bash-scripts/add-path-pl.sh"
-   listPlaylists = "../private/bash-scripts/list-playlists.sh"
-   getPlaylist = "../private/bash-scripts/get-playlist.sh"
-   dequeuePath = "../private/bash-scripts/dequeue-path.sh"
-   topqueuePath = "../private/bash-scripts/topqueue-path.sh"
    nodesRoot = "../nodes"
    nodeJsPath = "/usr/bin/nodejs"
    currentStatus = None
@@ -32,14 +21,14 @@ class CmrRequest (BaseHTTPRequestHandler):
 
    def runNode(s):
        parsed = urlparse.urlparse(s.path)
-       if parsed.path.contains(".."): # safety first
+       if ".." in parsed.path: # safety first
             print "404'ing due to dot-dot: %s" % (parsed.path)
             s.send_response (404)
             return False
        query = urlparse.parse_qsl(parsed.query)
        target = s.nodesRoot + parsed.path + ".js";
        if not os.path.isfile(target):
-            print "404'ing due to not-a-file: %s" % (parsed.path)
+            print "404'ing due to not-a-file: %s as %s" % (parsed.path, target)
             s.send_response (404)
             return False
 
@@ -59,25 +48,21 @@ class CmrRequest (BaseHTTPRequestHandler):
       print "uuuhhhh..."
 
    def do_GET_private(s):
-      start = s.getMilli();
+       start = s.getMilli();
 
        if s.tryAsRoot():
-           s.success++;
-       elif s.tryAsTool():
-           s.success++;
+           s.success += 1
        elif s.tryAsAsset():
-           s.success++;
+           s.success += 1
        elif s.runNode():
-           s.success++;
-       else
-           s.failure++;
-      totalms = s.getMilli() - start;
-      print "Took %dms. Win/Loss Record: %d / %d" % (totalms, s.success, s.failure)
+           s.success += 1
+       else:
+           s.failure += 1
+       totalms = s.getMilli() - start;
+       print "%s: took %dms. Win/Loss Record: %d / %d" % (s.path, totalms, s.success, s.failure)
 
    def do_GET (s):
-      print s.log_date_time_string() + " GET " + s.path
       s.do_GET_private();
-      print s.log_date_time_string() + " ...done with " + s.path
 
    def writeFileToResponse (s, fname):
       f = open(fname, "r")
