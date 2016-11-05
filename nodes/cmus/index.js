@@ -8,6 +8,7 @@ module.exports = {
    search: require('./search.js'),
    dequeue: require('./dequeue.js'),
    play: require('./play.js'),
+   next: require('./next.js'),
    pause: require('./pause.js'),
    enqueue: require('./enqueue.js'),
    queue: require('./queue.js'),
