@@ -1,13 +1,10 @@
-#!/usr/bin/nodejs
-
 const BEET = require('../lib/beet.js');
 const ARGS = require('../lib/args.js');
-const LOG  = require('../lib/log.js');
 const J = JSON.stringify;
 var beet = BEET.makeBeet();
 
 module.exports = {
-   run: function(req, res) {
+   random: function(req, res) {
       var args = ARGS.buildArgs(req);
       var result = "";
       beet.Random(+args.Get("n", "50")).then(
@@ -18,5 +15,11 @@ module.exports = {
             },
             function(err) { LOG.warn("Problem getting random (" + J(args) + "): " + err); }
             );
+   },
+   search: function(req) {
+      var args = ARGS.buildArgs(req);
+      args.Ensure(['q']);
+      return J(beet.Query(args.Get('q')));
    }
-};
+}
+

@@ -2,13 +2,14 @@ const spawn = require('child_process').spawnSync;
 const SAFETY = require('../lib/safety.js');
 const LOG = require('../lib/log.js');
 const SONG = require('../lib/song.js');
+const decoder = new (require("string_decoder").StringDecoder);
 
 const queueStatusProto = {
-   songs: []
 };
 
 function makeQueueStatus(songList) {
    var ret = Object.create(queueStatusProto);
+   ret.songs = [];
    SAFETY.ensureDefined([songList], ['songList']);
    ret.songs = songList;
    return ret;
@@ -77,7 +78,8 @@ const cmusProto = {
    },
    PlayerStatus: function() {
       var output = spawn(this.CmusRemotePath(), ["-Q"]);
-      var lines = output.stdout.toString();
+      var lines = decoder.write(output.stdout);
+      lines += decoder.end();
       lines = lines.split("\n");
       return makePlayerStatus(lines);
    },
