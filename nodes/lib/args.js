@@ -9,6 +9,8 @@ function makeArgs() {
       Get: function(name, fallback) {
          var ret = this.map[name];
          if (ret === undefined) {
+            if (fallback === undefined)
+               throw name + " is not present in arguments (" + this.map + ")";
             return fallback;
          }
          return ret;

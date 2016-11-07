@@ -6,12 +6,10 @@ var cmus = CMUS.makeCmus();
 module.exports = {
    addPlaylist: function(req) {
       var args = ARGS.buildArgs(req);
-      args.Ensure(["name", "path"]);
       pl.AddTo(args.Get("name"), args.Get("path"));
    },
    seekto: function(req) {
       var args = ARGS.buildArgs(req);
-      args.Ensure(["s"]);
       cmus.Seek.To(args.Get("s"));
       return this.status();
    },
@@ -28,25 +26,22 @@ module.exports = {
       return this.status();
    },
    pause: function() {
-      cmus.Next();
+      cmus.Pause();
       return this.status();
    },
    queue: function() { return J(cmus.QueueStatus()); },
    enqueue: function(req) {
       var args = ARGS.buildArgs(req);
-      args.Ensure(["path"]);
       cmus.Enqueue(args.Get("path"));
       return this.queue();
    },
    dequeue: function(req) {
       var args = ARGS.buildArgs(req);
-      args.Ensure(["path"]);
       cmus.Dequeue(args.Get("path"));
       return this.queue();
    },
    topqueue: function(req) {
       var args = ARGS.buildArgs(req);
-      args.Ensure(["path"]);
       cmus.TopQueue(args.Get("path"));
       return this.queue();
    }

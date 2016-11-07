@@ -306,6 +306,7 @@ function cmrsearchInit() {
       ResultsSongTable.SetSongs(flatHistory);
    }));
 
+   /*
    window.onscroll = function(evt) {
       var ui = document.getElementById("playerui");
       var vis = false;
@@ -321,6 +322,7 @@ function cmrsearchInit() {
          sw.style.display = "none";
       }
    };
+   */
 
    var sw = document.getElementById("player");
    if (window.mobilecheck()) {
