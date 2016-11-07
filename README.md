@@ -10,10 +10,12 @@ It consists of 2 parts:
 Recently migrated to an all-nodejs approach. This seems in many respects quicker than before, because we're now serving requests asynchronously and doing more stuff in-server than before.
 "Random", for instance, used to take a good 10 seconds to return, but now finishes in a second or two. Page load is noticeably improved.
 
-It is designed to sit in front of a beets library, but the fundamental design of beets (re-loading the database every time) is fundamentally incompatible with this use case.
+It is designed to sit in front of a beets library, but the fundamental design of beets (re-loading the database every time) is incompatible with this use case.
 
-Maybe I can use nodejs just to _read_ the beets library, since PoP does not (as of now) need to modify it, and it's just a SQLite db under it all.
-Or, maybe I could modify beets to accept commands from stdin, so I could just pipe commands into it.
+I've modified beets to accept commands on stdin, so at least it keeps the database in memory between requests now.
+I've done some kinda-hacky stuff to avoid having to parse the actual file path now.
+Performance has definitely improved, especially for "small" searches, but regex search performance is terrible, and runtime seems to correlate pretty well with the number of results.
+This is a red flag that there is something simple that could be done to improve performance (relocating a vector on each new result?).
 
 #### Web Page
 

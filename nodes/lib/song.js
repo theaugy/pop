@@ -69,5 +69,8 @@ module.exports = {
          songs.push(This.parseSong(path));
       });
       return songs;
+   },
+   songFromFields: function(fields) {
+      return makeSong(fields.artist, fields.title, fields.album, fields.path);
    }
 };
