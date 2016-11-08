@@ -248,12 +248,6 @@ BackendImpl.prototype.SeekToSecond = function(second) {
    this.requestAndUpdatePlayerStatus("seekto?" + makeArgs(["s", second]));
 }
 
-// pl is just a name. It would be nice if playlists became "objects" in
-// the same sense that a song is an object.
-BackendImpl.prototype.AddCurrentSongToPlaylist = function(pl) {
-   this.request("addPlaylist?" + makeArgs(["name", pl]), function(){});
-}
-
 BackendImpl.prototype.AddSongToPlaylist = function(song, pl) {
    this.request("addPlaylist?" + makeArgs(["name", pl, 'path', song["path"]]), function(){});
 }
@@ -792,7 +786,8 @@ function selectPlaylist(x, y, callback) {
 function addToPlaylistClick(evt) {
    var x = evt.clientX;
    var y = evt.clientY;
-   selectPlaylist(evt.pageX, evt.pageY, pl => Backend.AddCurrentSongToPlaylist(pl));
+   selectPlaylist(evt.pageX, evt.pageY, pl =>
+         Backend.AddSongToPlaylist({ path: PlayerStatus["path"] }, pl));
 }
 
 function selectString(strings, icons, x, y, cb) {

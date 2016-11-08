@@ -5,12 +5,8 @@ const QUERY = require('../lib/songquery.js');
 const SONG = require('../lib/song.js');
 const fs = require('fs');
 
-const plListProto = {
-   names: []
-};
-
 function makeplList(plPaths) {
-   var ret = Object.create(plListProto);
+   var ret = { names: [] };
    var c = 0;
    plPaths.forEach((pl) => {
       var p = pl;
@@ -35,14 +31,14 @@ const pliProto = {
       return '/m/playlists/' + plName + '.m3u';
    },
    List: function() {
-      output = spawn("/usr/bin/find", ['/m/playlists', '-name', '*.m3u']);
+      var output = spawn("/usr/bin/find", ['/m/playlists', '-name', '*.m3u']);
       var paths = output.stdout.toString();
       paths = paths.split('\n');
       LOG.info("Listing " + paths.length + " playlists");
       return makeplList(paths);
    },
    Cat: function(plName) {
-      output = spawn("/bin/cat", [this.nameToPath(plName)]);
+      var output = spawn("/bin/cat", [this.nameToPath(plName)]);
       var songs = SONG.parseSongs(output.stdout.toString().split("\n"));
       LOG.info("Cat'ing " + songs.length + " songs in " + plName);
       return QUERY.makeQueryResult("Playlist " + plName, songs);
