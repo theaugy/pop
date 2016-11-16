@@ -232,7 +232,7 @@ const cmusProto = {
    },
    oneShot: function(args) {
       var This = this;
-      return function() { return new Promise(resolve => resolve(This.remote.command(args))); };
+      return function() { return Promise.resolve(This.remote.command(args)).then(This.playerStatus()); };
    },
    play: function() { return this.oneShot(['--play']); },
    Play: function() { return this.S(this.play()); },
