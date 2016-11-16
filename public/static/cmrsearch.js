@@ -180,15 +180,19 @@ function loadPlaylistClick(evt) {
 function enqueueMatching(field, value, clickedSong) {
    var foundMatch = false;
    if (clickedSong === null) foundMatch = true;
+   var matches = [];
    for (var i = 0; i < ResultsSongTable.currentSongs.length; ++i) {
       if (!foundMatch && ResultsSongTable.currentSongs[i] === clickedSong) {
          foundMatch = true; // start at the clicked song
       }
       if (foundMatch && ResultsSongTable.currentSongs[i][field] === value) {
-         Backend.EnqueueSong(ResultsSongTable.currentSongs[i]);
+         matches.push(ResultsSongTable.currentSongs[i]);
       } else if (foundMatch) {
          break; // first non-match after the original breaks
       }
+   }
+   if (matches.length > 0) {
+      Backend.EnqueueSongs(matches);
    }
 }
 

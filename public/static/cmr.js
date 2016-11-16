@@ -256,14 +256,31 @@ BackendImpl.prototype.MoveSongToTopOfQueue = function(song) {
    this.requestAndUpdateQueueStatus("topqueue?" + makeArgs(["path", song['path']]));
 }
 
+BackendImpl.prototype.MoveSongsToTopOfQueue = function(songs) {
+   var args = [];
+   songs.forEach((s) => { args.push("path"); args.push(s['path']); });
+   this.requestAndUpdateQueueStatus("topqueue?" + makeArgs(args));
+}
+
 // TODO: It might be nice to enqueue a song without triggering callbacks, or
 // enqueue multiple songs at once.
 BackendImpl.prototype.EnqueueSong = function(song) {
    this.requestAndUpdateQueueStatus("enqueue?" + makeArgs(["path", song["path"]]));
 }
+BackendImpl.prototype.EnqueueSongs = function(songs) {
+   var args = [];
+   songs.forEach((s) => { args.push("path"); args.push(s['path']); });
+   this.requestAndUpdateQueueStatus("enqueue?" + makeArgs(args));
+}
 
 BackendImpl.prototype.DequeueSong = function(song) {
    this.requestAndUpdateQueueStatus("dequeue?" + makeArgs(["path", song["path"]]));
+}
+
+BackendImpl.prototype.DequeueSongs = function(songs) {
+   var args = [];
+   songs.forEach((s) => { args.push("path"); args.push(s['path']); });
+   this.requestAndUpdateQueueStatus("dequeue?" + makeArgs(args));
 }
 
 // I don't remember the format of the response. Probably { songs: [ song1, song2, ... ] }
@@ -576,8 +593,7 @@ function plainOlQueueInit() {
    menu.GetCurrentAction = function() { return this.actions.current; };
 
    menu.actions.remove = (evt, songs) => {
-      songs.forEach(s => Backend.DequeueSong(s));
-      Backend.UpdateQueueStatus(); // refresh status after dequeueing everything
+      Backend.DequeueSongs(songs);
    };
    menu.actionList.push(menu.actions.remove);
 
@@ -589,8 +605,7 @@ function plainOlQueueInit() {
    menu.actionList.push(menu.actions.pladd);
 
    menu.actions.playnext = (evt, songs) => {
-      songs.forEach(s => Backend.MoveSongToTopOfQueue(s));
-      Backend.UpdateQueueStatus(); // refresh status once at end
+      Backend.MoveSongsToTopOfQueue(songs);
    }
    menu.actionList.push(menu.actions.playnext);
 

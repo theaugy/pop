@@ -1,49 +1,50 @@
 const CMUS = require('../lib/cmus.js');
 const ARGS = require('../lib/args.js');
-const J = JSON.stringify;
 var cmus = CMUS.makeCmus();
 
+const R = function(result, res, req) {
+   res.writeHead(200, {'Content-type': 'application/json' });
+   res.write(JSON.stringify(result), 'utf8');
+   res.end();
+   return true;
+}
+
+// j => R(j, res, req) means "write JSON response to the result"
 module.exports = {
-   addPlaylist: function(req) {
+   addPlaylist: function(req, res) {
       var args = ARGS.buildArgs(req);
-      pl.AddTo(args.Get("name"), args.Get("path"));
+      pl.AddTo(args.Get("name"), args.Get("path")).then(j => R(j, res, req));
    },
-   seekto: function(req) {
+   seekto: function(req, res) {
       var args = ARGS.buildArgs(req);
-      cmus.Seek.To(args.Get("s"));
-      return this.status();
+      cmus.Seek.To(args.Get("s")).then(j => R(j, res, req));
    },
-   status: function() {
-      var j = J(cmus.PlayerStatus());
-      return j;
+   status: function(req, res) {
+      cmus.PlayerStatus().then(j => R(j, res, req));
    },
-   play: function() {
-      cmus.Play();
-      return this.status();
+   play: function(req, res) {
+      cmus.Play().then(j => R(j, res, req));
    },
-   next: function() {
-      cmus.Next();
-      return this.status();
+   next: function(req, res) {
+      cmus.Next().then(j => R(j, res, req));
    },
-   pause: function() {
-      cmus.Pause();
-      return this.status();
+   pause: function(req, res) {
+      cmus.Pause().then(j => R(j, res, req));
    },
-   queue: function() { return J(cmus.QueueStatus()); },
-   enqueue: function(req) {
+   queue: function(req, res) {
+      cmus.QueueStatus().then(j => R(j, res, req));
+   },
+   enqueue: function(req, res) {
       var args = ARGS.buildArgs(req);
-      cmus.Enqueue(args.Get("path"));
-      return this.queue();
+      cmus.Enqueue(args.Get("path")).then(j => R(j, res, req));
    },
-   dequeue: function(req) {
-      var args = ARGS.buildArgs(req);
-      cmus.Dequeue(args.Get("path"));
-      return this.queue();
+   dequeue: function(req, res) {
+      var args = ARGS.buildArgs(req, res);
+      cmus.Dequeue(args.Get("path")).then(j => R(j, res, req));
    },
-   topqueue: function(req) {
-      var args = ARGS.buildArgs(req);
-      cmus.TopQueue(args.Get("path"));
-      return this.queue();
+   topqueue: function(req, res) {
+      var args = ARGS.buildArgs(req, res);
+      cmus.TopQueue(args.Get("path")).then(j => R(j, res, req));
    }
 }
 

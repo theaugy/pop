@@ -348,6 +348,8 @@ CustomColumn = function (name) {
    this.buttoncb = null;
    this.polishcb = null;
    this.icon = "";
+   // Note: this ONLY affects mouseover icons! CustomColumn does nothing magic to
+   // make a click apply to all matching items!
    this.buttonAppliesToMatches = false;
 }
 

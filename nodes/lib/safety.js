@@ -10,5 +10,12 @@ module.exports = {
             throw "Not defined: " + names[index] + " at:\n" + stack;
          }
       });
+   },
+   fillInMissing: function (ary, names) {
+      ary.forEach(function (val, index) {
+         if (val === undefined) {
+            ary[index] = "";
+         }
+      });
    }
 };
