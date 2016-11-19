@@ -299,3 +299,7 @@ nav > ul > li > a {
    text-decoration: none;
    padding: 1vmin 1vmin;
 }
+
+#SongListChild {
+   left-margin: 1vmin;
+}
