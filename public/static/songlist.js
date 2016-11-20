@@ -72,6 +72,11 @@ function makeSongList(tableId) {
          var div = document.createElement("div");
 
          var This = this;
+         div.appendChild(this.makeButton("times",
+                  () => {
+                     var matches = This.getMatching("album", tr.song["album"], tr.song);
+                     if (matches.length > 0) Backend.DequeueSongs(matches);
+                  }));
          div.appendChild(this.makeButton("plus",
                () => {
                   var matches = This.getMatching("album", tr.song["album"], tr.song);
@@ -107,6 +112,8 @@ function makeSongList(tableId) {
          var div = document.createElement("div");
          var text = document.createTextNode(tr.songValue);
          var This = this;
+         div.appendChild(this.makeButton("times",
+                  ()=>Backend.DequeueSong(tr.song)));
          div.appendChild(this.makeButton("plus",
                () => Backend.EnqueueSong(tr.song)));
          div.appendChild(this.makeButton("play-circle-o",
