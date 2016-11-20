@@ -76,6 +76,7 @@ SongTable.prototype.makeHeaderRow = function() {
    return h;
 }
 
+// document.getElementById("transport").appendChild(makeTransport().element);
 SongTable.prototype.Clear = function() {
    var t = this.table;
    while (t.lastChild) {

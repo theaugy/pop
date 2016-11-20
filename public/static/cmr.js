@@ -79,25 +79,6 @@ function nowPaused(prev, cur) {
    return paused && !was;
 }
 
-// true if passed song is currently playing
-function isCurrentlyPlaying(song) {
-   var t = getPlainOlPlayerSongTable();
-   var current = t.currentSongs;
-   if (current == null && song == null) {
-      return true;
-   }
-   if (current == null) {
-      return false;
-   }
-   if (current.length === 0) {
-      return false;
-   }
-   if (current[0]["path"] === song["path"]) {
-      return true;
-   }
-   return false;
-}
-
 // true if we are playing any song
 function isPlaying() {
    if (PlayerStatus["status"] === "playing") {
@@ -413,87 +394,11 @@ function clearChildren(el) {
    }
 }
 
-var PlainOlPlayerSongTable = null;
-
-function getPlainOlPlayerSongTable() {
-   if (PlainOlPlayerSongTable === null) {
-      PlainOlPlayerSongTable = new SongTable("popTable", "Artist|Title|Album");
-      var t = PlainOlPlayerSongTable; // big ol' name
-      t.historySize = 100;
-      // the default column titles are kinda noisy
-      t.artist.name = "";
-      t.artist.Icon("");
-      t.title.name = "";
-      t.title.Icon("");
-      t.album.name = "";
-      t.album.Icon("");
-      t.SetCookieStore("PoPNowPlaying");
-
-      if (!window.mobilecheck()) {
-         var bm = new CustomColumn("");
-         bm.Text(song => "-1m");
-         bm.Button(song => Backend.SeekBackward1Minute());
-         t.AddCustomColumn(bm);
-
-         var fm = new CustomColumn("");
-         fm.Text(song => "+1m");
-         fm.Button(song => Backend.SeekForward1Minute());
-         t.AddCustomColumn(fm);
-
-         var g2 = new CustomColumn("");
-         g2.Text(song => "goto...");
-         g2.Button(function(song) {
-            var pos = window.prompt("Position in seconds:", "0");
-            if (pos != null)
-            {
-               Backend.SeekToSecond(pos);
-            }
-         });
-         t.AddCustomColumn(g2);
-
-         var next = new CustomColumn("");
-         next.Text(song => "Next");
-         next.Button(song => backend.NextSong());
-         t.AddCustomColumn(next);
-      } else {
-         document.getElementById("popTable").className = "popTableMobile";
-      }
-   }
-   return PlainOlPlayerSongTable;
-}
-
 function makeCmusButton(text, fn) {
    var b = document.createElement("button");
    b.onclick = fn;
    b.appendChild(document.createTextNode(text));
    return b;
-}
-
-function updatePlainOlPlayer() {
-   var s = getPlayerStatus();
-   if (s === null) {
-      return;
-   }
-   if (!isCurrentlyPlaying(s)) {
-      // if you just SetSongs() blindly, you'll
-      // fill up the player's history with the same song.
-      var t = getPlainOlPlayerSongTable();
-      t.SetSongs([s]);
-   }
-   var statusText = document.getElementById("popStatusText");
-   clearChildren(statusText);
-   var pos = s['position'];
-   var dur = s['duration'];
-   statusText.appendChild(
-         document.createTextNode(
-            s["status"] + " " + pos + "/" + dur));
-
-   var prog = document.getElementById('popProgressBar');
-   if (prog) {
-      prog.style.width = (parseInt(pos) * 100) / parseInt(dur) + "%";
-   }
-
-   document.title = "PoP: " + s["title"] + " - " + s["artist"] + s["path"];
 }
 
 function newPlayerStatus(statStr) {
@@ -573,12 +478,6 @@ function qdoMatching(evt, field, clickedSong, doer) {
 function plainOlQueueInit() {
    var q = getPlainOlQueue();
    var buttons = getQueueButtons();
-   if (buttons !== null) {
-      var b = document.createElement("button");
-      b.appendChild(document.createTextNode("refresh"));
-      b.onclick = evt => Backend.UpdateQueueStatus();
-      buttons.appendChild(b);
-   }
 
    // arrow-up
    // bars
@@ -687,39 +586,17 @@ function keyupHandler(evt) {
    }
 }
 
+var Transport = null;
+
 // NOTE: This function has become the de facto "initialize everything in cmr.js" function
 function plainOlPlayerInit() {
+   // TODO: everything in this function should be moved elsewhere
+   Transport = makeTransport();
+   document.getElementById("transport").appendChild(Transport.element);
    initStatusTimer();
-
-   var btns = document.getElementById("popButtons");
-   btns.appendChild(makeCmusButton("Play", () => Backend.Play()));
-   btns.appendChild(makeCmusButton("Pause", () => Backend.Pause()));
-   btns.appendChild(makeCmusButton("Next", () => Backend.NextSong()));
-   btns.appendChild(makeCmusButton("Previous", () => Backend.PreviousSong()));
-   btns.appendChild(makeCmusButton("fav", () => Backend.FavoriteCurrentSong()));
-   btns.appendChild(makeCmusButton("add to playlist...", addToPlaylistClick));
-   btns.appendChild(makeCmusButton("TOP", function() {
-      window.scrollBy(0, 0 - window.pageYOffset);
-   }));
-   // NOTE: btns also modified by cmrsearchinit
-
-   var statusText = document.getElementById("popStatusText");
-   statusText.style.fontSize = "smaller";
-
-   var prog = document.getElementById('popProgress');
-   prog.onclick = function (p) {
-      var prog = p;
-      return function(evt) {
-      var s = getPlayerStatus();
-      if (s) {
-         var x = evt.offsetX;
-         var pos = evt.offsetX / prog.offsetWidth;
-         pos = Math.round(pos * s['duration']);
-         Backend.SeekToSecond(pos);
-      }
-   }}(prog);
-
-   NewPlayerStatus.addCallback(updatePlainOlPlayer);
+   NewPlayerStatus.addCallback(function() {
+      document.title = "PoP: " + PlayerStatus["title"] + " - " + PlayerStatus["artist"] + PlayerStatus["path"];
+   });
    QueueUpdated.addCallback(updatePlainOlQueue);
    Backend.UpdatePlayerStatus();
    document.addEventListener("keyup", keyupHandler, false);

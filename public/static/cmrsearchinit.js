@@ -1,3 +1,2 @@
 platformInit();
 cmrsearchInit();
-cmrinit();

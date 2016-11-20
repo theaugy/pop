@@ -177,6 +177,10 @@ function loadPlaylistClick(evt) {
          pl => Backend.GetPlaylistSongs(pl, queryCallback));
 }
 
+function loadQueueClick(evt) {
+   ResultsSongTable.SetSongs(QueueStatus['songs']);
+}
+
 function enqueueMatching(field, value, clickedSong) {
    var foundMatch = false;
    if (clickedSong === null) foundMatch = true;
@@ -246,7 +250,8 @@ function nextView() {
 }
 
 function cmrsearchInit() {
-   ResultsSongTable = new SongTable("resultList");
+   //ResultsSongTable = new SongTable("resultList");
+   ResultsSongTable = makeSongList("resultList");
    ResultsSongTable.historySize = 10; // can probably get away with even more...
 
    if (ResultsSongTable.album) {
@@ -279,36 +284,19 @@ function cmrsearchInit() {
    });
 
 
-   document.getElementById("searchbtn").onclick=querySubmit;
    document.getElementById("artistbtn").onclick=artistClick;
    document.getElementById("randombtn").onclick=randomClick;
-   document.getElementById("dateadded").onclick=dateAddedClick;
-   document.getElementById("monthadded").onclick=monthAddedClick;
    document.getElementById("lastthirty").onclick=lastThirtyClick;
-   document.getElementById("releaseyear").onclick=releaseYearClick;
    document.getElementById("loadplaylist").onclick=loadPlaylistClick;
-   document.getElementById("back").onclick=() => ResultsSongTable.Back();
-   document.getElementById("forward").onclick=() => ResultsSongTable.Forward();
+   document.getElementById("queue").onclick=loadQueueClick;
+
+   QueueUpdated.addCallback(() => document.getElementById("queue").innerHTML = 
+         "queue (" + QueueStatus['songs'].length + ")");
    plainOlPlayerInit();
    plainOlQueueInit();
    toolsInit();
 
    TrackChanged.addCallback(() => Backend.UpdateQueueStatus());
-
-   var btns = document.getElementById("popButtons");
-   btns.appendChild(makeCmusButton("get history", function(evt) {
-      var st = PlainOlPlayerSongTable;
-      if (st === null) return;
-      var h = st.previousSongs;
-      var flatHistory = []; // we translate a list-of-lists into a flat list
-      for (var i = 0; i < h.length; ++i) {
-         var list = h[i];
-         for (var j = 0; j < list.length; ++j) {
-            flatHistory.push(list[j]);
-         }
-      }
-      ResultsSongTable.SetSongs(flatHistory);
-   }));
 
    /*
    window.onscroll = function(evt) {
@@ -338,8 +326,11 @@ function cmrsearchInit() {
       sw.classList.add("statusWrapper");
    }
 
+   /*
+    * TODO: Remove left/right altogether
    NextView.addCallback(nextView);
    PreviousView.addCallback(previousView);
+   */
 
    if (!window.location.hash) {
       window.location.hash = "#player";
