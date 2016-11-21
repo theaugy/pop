@@ -273,8 +273,9 @@ BackendImpl.prototype.GetCurrentPlaylist = function(callback) {
    this.request("playlist", callback);
 }
 
-BackendImpl.prototype.RunServerSideTool = function(name, argstring, callback) {
-   this.request("tool?" + makeArgs([name, argstring]), callback);
+// args=name,value,name,value,etc
+BackendImpl.prototype.RunServerSideTool = function(args, callback) {
+   this.request("tool?" + makeArgs(args), callback);
 }
 
 // returns newline-separated playlist names

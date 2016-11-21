@@ -4,11 +4,12 @@ function makeTools() {
          var b = document.createElement("button");
          b.appendChild(document.createTextNode(name));
          const argstring = "";
-         b.toolFinished = (msg) => console.log(msg);
-         b.runTool = () => Backend.RunServerSideTool(script, argstring, b.toolFinished);
+         b.toolFinished = (msg) => console.log(JSON.parse(msg));
+         b.runTool = () => Backend.RunServerSideTool(['name', script], b.toolFinished);
          b.onclick = b.runTool;
          ret.element.appendChild(b);
          this.tools.push({ button: b, name: name, script: script });
+         ret.element.appendChild(document.createElement("br"));
          return b;
       }
    };
@@ -17,5 +18,6 @@ function makeTools() {
    ret.tools = [];
 
    ret.Add("Chromecast", "chromecast");
+   ret.Add("Desk", "desk");
    return ret;
 }
