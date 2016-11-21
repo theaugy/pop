@@ -22,7 +22,11 @@ module.exports = {
       const q = args.Get('q');
       var m = q.match(beet.artistStartRegex);
       if (m !== null) {
-         return beet.ArtistStartQuery(m[1]);
+         var songs = beet.ArtistStartQuery(m[1]);
+         res.writeHead(200, {'Content-type': 'application/json' });
+         res.write(J(songs), 'utf8');
+         res.end();
+         return;
       }
 
       beet.Query(q).then(

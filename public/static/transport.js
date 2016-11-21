@@ -31,7 +31,7 @@ function makePlayButton() {
    ret.icon = document.createElement("i");
    ret.className = "playButton";
    ret.appendChild(ret.icon);
-   ret.onclick = () => Backend.Play();
+   ret.onclick = () => Backend.Pause();
    return ret;
 }
 
@@ -41,7 +41,7 @@ function makeNextButton() {
    ret.icon.className = "fa fa-" + "arrow-circle-o-right";
    ret.className = "nextButton";
    ret.appendChild(ret.icon);
-   ret.onclick = () => Backend.Next();
+   ret.onclick = () => Backend.NextSong();
    return ret;
 }
 

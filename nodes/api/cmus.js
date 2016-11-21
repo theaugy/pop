@@ -1,5 +1,6 @@
 const CMUS = require('../lib/cmus.js');
 const ARGS = require('../lib/args.js');
+const PL = require('../lib/playlists.js').makePlaylistInterface();
 var cmus = CMUS.makeCmus();
 
 const R = function(result, res, req) {
@@ -13,7 +14,8 @@ const R = function(result, res, req) {
 module.exports = {
    addPlaylist: function(req, res) {
       var args = ARGS.buildArgs(req);
-      pl.AddTo(args.Get("name"), args.Get("path")).then(j => R(j, res, req));
+      PL.AddTo(args.Get("name"), args.Get("path"));
+      return ""; // to get an empty response written. which is a-ok.
    },
    seekto: function(req, res) {
       var args = ARGS.buildArgs(req);

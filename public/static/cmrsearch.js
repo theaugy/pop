@@ -1,5 +1,7 @@
 var Results = null;
 var ResultsSongTable = null;
+var Transport = null;
+var Nav = null;
 
 function refreshResults() {
    if (Results == null) {
@@ -8,10 +10,6 @@ function refreshResults() {
    }
    var songs = Results["songs"];
    ResultsSongTable.SetSongs(songs);
-}
-
-function getResultList() {
-   return document.getElementById("resultList");
 }
 
 function emptyResultList() {
@@ -31,87 +29,6 @@ function querySubmit() {
 function querySubmit1(field, midfix, text) {
    //getCmr("search?" + makeArgs(["q", field + midfix + text ]), queryCallback);
    Backend.SearchForSongs(field + midifx + text, queryCallback);
-}
-
-function makeLetter(letter, combo)
-{
-   var d = document.createElement("button");
-   d.className = "letter";
-   d.appendChild(document.createTextNode(letter));
-   return d;
-}
-
-function makeLetterOption(letter, combo)
-{
-   var opt = document.createElement("div");
-   opt.className = "letterContainer";
-   opt.appendChild(makeLetter(letter, combo));
-   opt.onclick = evt => {
-      querySubmit1("artist", "::^", letter);
-      combo.onblur();
-   }
-   return opt;
-}
-
-function closeButton(combo)
-{
-   var opt = document.createElement("div");
-   opt.className = "letterContainer";
-   var btn = document.createElement("button");
-   btn.appendChild(document.createTextNode("close"));
-   btn.onclick = evt => combo.onblur();
-   opt.appendChild(btn);
-   return opt;
-}
-
-function makeAZCombo() {
-   var c = document.createElement("div");
-   c.className = "letterSelect";
-   c.appendChild(makeLetterOption("A", c));
-   c.appendChild(makeLetterOption("B", c));
-   c.appendChild(makeLetterOption("C", c));
-   c.appendChild(makeLetterOption("D", c));
-   c.appendChild(makeLetterOption("E", c));
-   c.appendChild(makeLetterOption("F", c));
-   c.appendChild(makeLetterOption("G", c));
-   c.appendChild(makeLetterOption("H", c));
-   c.appendChild(makeLetterOption("I", c));
-   c.appendChild(makeLetterOption("J", c));
-   c.appendChild(makeLetterOption("K", c));
-   c.appendChild(makeLetterOption("L", c));
-   c.appendChild(makeLetterOption("M", c));
-   c.appendChild(makeLetterOption("N", c));
-   c.appendChild(makeLetterOption("O", c));
-   c.appendChild(makeLetterOption("P", c));
-   c.appendChild(makeLetterOption("Q", c));
-   c.appendChild(makeLetterOption("R", c));
-   c.appendChild(makeLetterOption("S", c));
-   c.appendChild(makeLetterOption("T", c));
-   c.appendChild(makeLetterOption("U", c));
-   c.appendChild(makeLetterOption("V", c));
-   c.appendChild(makeLetterOption("W", c));
-   c.appendChild(makeLetterOption("X", c));
-   c.appendChild(makeLetterOption("Y", c));
-   c.appendChild(makeLetterOption("Z", c));
-   c.appendChild(makeLetterOption("_", c));
-   c.appendChild(closeButton(c));
-   return c;
-}
-
-function artistClick(evt) {
-   var letter = makeAZCombo();
-   letter.className = "letterSelector";
-   letter.style.position = "absolute";
-   letter.style.top = evt.clientY;
-   letter.style.left = evt.clientX;
-   letter.tabIndex = "0";
-   letter.focus();
-   letter.onblur = () => document.getElementById("search").removeChild(letter);
-   document.getElementById("search").appendChild(letter);
-}
-
-function randomClick(evt) {
-   Backend.GetRandomSongs(50, queryCallback);
 }
 
 function releaseYearClick(evt) {
@@ -153,34 +70,6 @@ function monthAddedClick(evt) {
    document.body.appendChild(div);
 }
 
-function lastThirtyClick(evt) {
-   var y = new Date().getFullYear();
-   var m = new Date().getMonth() + 1;
-   var d = new Date().getDate();
-   if (m == 1) {
-      y--;
-      m = 12;
-   } else {
-      m--;
-   }
-   if (d > 28) {
-      d = 28;
-   }
-   var q = "added:" + y + "-" + m + "-" + d + ".. album+";
-   Backend.SearchForSongs(q, queryCallback);
-}
-
-function loadPlaylistClick(evt) {
-   var x = evt.clientX;
-   var y = evt.clientY;
-   selectPlaylist(evt.pageX, evt.pageY,
-         pl => Backend.GetPlaylistSongs(pl, queryCallback));
-}
-
-function loadQueueClick(evt) {
-   ResultsSongTable.SetSongs(QueueStatus['songs']);
-}
-
 function enqueueMatching(field, value, clickedSong) {
    var foundMatch = false;
    if (clickedSong === null) foundMatch = true;
@@ -200,57 +89,7 @@ function enqueueMatching(field, value, clickedSong) {
    }
 }
 
-var ViewList = [ "player", "search", "fancyPlayer", "settings" ];
-
-function updateViewClasses(previous, direction) {
-   var prev = document.getElementById(previous);
-   var next = document.getElementById(window.location.hash.substr(1));
-   if (direction === "left") {
-      prev.classList.add("hide-right");
-   } else {
-      prev.classList.add("hide-left");
-   }
-   if (next.classList.contains("hide-left"))
-      next.classList.remove("hide-left");
-   if (next.classList.contains("hide-right"))
-      next.classList.remove("hide-right");
-}
-
-function previousView() {
-   var current = window.location.hash.substr(1);
-   var last = "";
-   var changed = false;
-   ViewList.forEach(view => { if (view === current) {
-      if (last !== "") {
-         window.location.href = "#" + last;
-         changed = true;
-      }
-   }
-   last = view;
-   });
-   if (changed) {
-      updateViewClasses(current, "left");
-   }
-}
-
-function nextView() {
-   var current = window.location.hash.substr(1);
-   var doNext = false;
-   var changed = false;
-   ViewList.forEach(view => { if (view === current) {
-      doNext = true;
-   } else if (doNext === true) {
-      window.location.href = "#" + view;
-      doNext = false;
-      changed = true;
-   }});
-   if (changed) {
-      updateViewClasses(current, "right");
-   }
-}
-
 function cmrsearchInit() {
-   //ResultsSongTable = new SongTable("resultList");
    ResultsSongTable = makeSongList("resultList");
    ResultsSongTable.historySize = 10; // can probably get away with even more...
 
@@ -283,57 +122,20 @@ function cmrsearchInit() {
       }
    });
 
+   var tools = makeTools();
+   document.getElementById("settings").appendChild(tools.element);
+   Transport = makeTransport();
+   document.getElementById("transport").appendChild(Transport.element);
 
-   document.getElementById("artistbtn").onclick=artistClick;
-   document.getElementById("randombtn").onclick=randomClick;
-   document.getElementById("lastthirty").onclick=lastThirtyClick;
-   document.getElementById("loadplaylist").onclick=loadPlaylistClick;
-   document.getElementById("queue").onclick=loadQueueClick;
-
-   QueueUpdated.addCallback(() => document.getElementById("queue").innerHTML = 
-         "queue (" + QueueStatus['songs'].length + ")");
-   plainOlPlayerInit();
-   plainOlQueueInit();
-   toolsInit();
+   Nav = makeNav("nav");
 
    TrackChanged.addCallback(() => Backend.UpdateQueueStatus());
-
-   /*
-   window.onscroll = function(evt) {
-      var ui = document.getElementById("playerui");
-      var vis = false;
-      if (ui) {
-         vis = window.pageYOffset > (ui.clientHeight * 3 / 4);
-      } else {
-         vis = true; // no fancy UI. always need the player.
-      }
-      var sw = document.getElementById("player");
-      if (vis) {
-         sw.style.display = "";
-      } else {
-         sw.style.display = "none";
-      }
-   };
-   */
-
-   var sw = document.getElementById("player");
-   if (window.mobilecheck()) {
-      sw.classList.add("statusWrapperMobile");
-      document.getElementById("queryInput").className = "inputMobile";
-      document.getElementById("plainOlQueue").className = "plainOlQueueMobile";
-      document.getElementById("tools").className = "toolsMobile";
-   } else {
-      sw.classList.add("statusWrapper");
-   }
-
-   /*
-    * TODO: Remove left/right altogether
-   NextView.addCallback(nextView);
-   PreviousView.addCallback(previousView);
-   */
 
    if (!window.location.hash) {
       window.location.hash = "#player";
    }
 }
 
+function selectPlaylist(callback) {
+   Nav.GetPlaylistTarget(callback);
+}

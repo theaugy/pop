@@ -143,8 +143,8 @@ const beetProto = {
       return p;
    },
    ArtistStartQuery: function(letter) {
-      var output = spawn('../../private/bash-scripts/artist-first-letter.sh', [letter + []]);
-      var songs = SONG.parseSongs(paths);
+      var output = spawn('../private/bash-scripts/artist-first-letter.sh', [letter]);
+      var songs = SONG.parseSongs(output.stdout.toString().split("\n"));
       LOG.info("Artists beginning with " + letter + " returned " + songs.length + " songs");
       return QUERY.makeQueryResult("Artists beginning with " + letter, songs);
    },

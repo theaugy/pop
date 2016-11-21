@@ -45,6 +45,7 @@ var NowPlaying = new Event("NowPlaying");
 var NewPlayerStatus = new Event("NewPlayerStatus");
 var NextView = new Event("NextView");
 var PreviousView = new Event("PreviousView");
+var PlaylistsLoaded = new Event("PlaylistsLoaded");
 
 // This holds the current player status. It's a big object containing
 // stuff like the current track, whether we're playing or paused, the
@@ -90,6 +91,9 @@ function isPlaying() {
 
 // List of songs currently in the queue and misc. other infos
 var QueueStatus = null;
+
+// Playlists
+var Playlists = { refreshedAt: 0, playlists: [] };
 
 // This follows the convention that "public" functions are CapitalFirstCamelCase.
 // "private" functions are lowerFirstCamelCase. So don't call those, bru.
@@ -275,7 +279,15 @@ BackendImpl.prototype.RunServerSideTool = function(name, argstring, callback) {
 
 // returns newline-separated playlist names
 BackendImpl.prototype.GetPlaylists = function(callback) {
-   this.request("listPlaylist", callback);
+   this.request("listPlaylist", (newlineSeparatedPlaylistNames) =>
+         {
+            // update playlist state
+            var playlists = newlineSeparatedPlaylistNames.split("\n");
+            Playlists = { refreshedAt: Date.now(), playlists: playlists };
+            PlaylistsLoaded.trigger();
+            // now call the passed callback, if any
+            if (callback) callback(newlineSeparatedPlaylistNames);
+         });
 }
 
 // returns something like { songs: [ song1, song2, ... ] }
@@ -346,27 +358,6 @@ function initStatusTimer() {
    });
 }
 
-// This is weird code bcause it's basically here just so that cmrui.js can call it.
-// cmrui.js pre-dates the Backend object, so it could use some updating.
-var BTN_PLAYING = "playing";
-var BTN_PAUSED = "paused";
-function playPauseClick () {
-   if (getPlayerStatus ()["status"] === BTN_PAUSED) {
-      Backend.Play();
-   }
-   else if (getPlayerStatus ()["status"] === BTN_PLAYING) {
-      Backend.Pause();
-   }
-}
-
-function nextClick () {
-   Backend.NextSong();
-}
-
-function prevClick () {
-   Backend.PreviousSong();
-}
-
 function getPlayerStatus () {
    return PlayerStatus;
 }
@@ -394,174 +385,6 @@ function clearChildren(el) {
    }
 }
 
-function makeCmusButton(text, fn) {
-   var b = document.createElement("button");
-   b.onclick = fn;
-   b.appendChild(document.createTextNode(text));
-   return b;
-}
-
-function newPlayerStatus(statStr) {
-   var prev = PlayerStatus;
-   PlayerStatus = JSON.parse (statStr);
-
-   // trigger events
-   if (trackChanged(prev, PlayerStatus)) {
-      TrackChanged.trigger();
-   }
-   if (nowPlaying(prev, PlayerStatus)) {
-      NowPlaying.trigger();
-   }
-   else if (nowPaused(prev, PlayerStatus)) {
-      NowPaused.trigger();
-   }
-
-   NewPlayerStatus.trigger();
-}
-
-function getTools() {
-   return document.getElementById("tools");
-}
-
-function toolCallback(msg) {
-   if (msg != null && msg.length > 0) {
-      alert(msg);
-   }
-}
-
-function makeToolButton(text, tool, argstring) {
-   var b = document.createElement("button");
-   b.appendChild(document.createTextNode(text));
-   b.onclick = () => Backend.RunServerSideTool(tool, argstring, toolCallback);
-   return b;
-}
-
-function toolsInit() {
-   var t = getTools();
-
-   t.appendChild(makeToolButton("Chromecast Init", "chromecast", ""));
-   //t.appendChild(makeToolButton("airport_pi Init", "shairport", ""));
-   //t.appendChild(makeToolButton("Fix Chromecast", "fixchromecast", ""));
-}
-
-var QueueSongTable = null;
-
-function getPlainOlQueue() {
-   if (QueueSongTable === null) {
-      QueueSongTable = new SongTable("plainOlQueue", "Artist|Title|Album");
-      QueueSongTable.historySize = 1; // no use for old queue states
-      QueueSongTable.artist.name = "";
-      QueueSongTable.artist.Icon("");
-      QueueSongTable.artist.buttonAppliesToMatches = true;
-      QueueSongTable.title.name = "";
-      QueueSongTable.title.Icon("");
-      QueueSongTable.title.buttonAppliesToMatches = true;
-      QueueSongTable.album.name = "";
-      QueueSongTable.album.Icon("");
-      QueueSongTable.album.buttonAppliesToMatches = true;
-   }
-   return QueueSongTable;
-}
-
-function getQueueButtons() {
-   return document.getElementById("plainOlQButtons");
-}
-
-function qdoMatching(evt, field, clickedSong, doer) {
-   if (doer === null) return;
-   var todo = QueueSongTable.getMatchingSongs(clickedSong, field);
-   if (todo.length > 0) {
-      doer(evt, todo);
-   }
-}
-
-function plainOlQueueInit() {
-   var q = getPlainOlQueue();
-   var buttons = getQueueButtons();
-
-   // arrow-up
-   // bars
-   // times
-   // floppy-o
-
-   var menu = new CustomColumn("Menu");
-   menu.Icon("bars");
-   menu.actionList = [];
-   menu.actions = {};
-   menu.Text(song => "menu");
-   menu.GetCurrentAction = function() { return this.actions.current; };
-
-   menu.actions.remove = (evt, songs) => {
-      Backend.DequeueSongs(songs);
-   };
-   menu.actionList.push(menu.actions.remove);
-
-   menu.actions.pladd = (evt, songs) => {
-      selectPlaylist(evt.pageX, evt.pageY, function(playlist) {
-         songs.forEach(s => Backend.AddSongToPlaylist(s, playlist));
-      });
-   };
-   menu.actionList.push(menu.actions.pladd);
-
-   menu.actions.playnext = (evt, songs) => {
-      Backend.MoveSongsToTopOfQueue(songs);
-   }
-   menu.actionList.push(menu.actions.playnext);
-
-   menu.Button(function(song, evt) {
-      selectString(["Add to playlist", "Remove", "Play Next"],
-                   ["floppy-o", "times", "arrow-up"], evt.pageX, evt.pageY,
-         function(selected) {
-            var cols = [q.artist, q.album, q.title];
-            if (selected === "Add to playlist") {
-               menu.actions.current = menu.actions.pladd;
-               q.ModifyColumnsIcon(cols, "floppy-o");
-            } else if (selected === "Remove") {
-               menu.actions.current = menu.actions.remove;
-               q.ModifyColumnsIcon(cols, "times");
-            } else if (selected === "Play Next") {
-               menu.actions.current = menu.actions.playnext;
-               q.ModifyColumnsIcon(cols, "arrow-up");
-            }
-         });
-   });
-
-   q.AddCustomColumn(menu);
-
-   q.artist.Button(function(song, evt) {
-      qdoMatching(evt, 'artist', song, menu.GetCurrentAction());
-   });
-   q.album.Button(function(song, evt) {
-      qdoMatching(evt, 'album', song, menu.GetCurrentAction());
-   });
-   q.title.Button(function(song, evt) {
-      qdoMatching(evt, 'title', song, menu.GetCurrentAction());
-   });
-
-   // establish the default action here
-   menu.actions.current = menu.actions.playnext;
-   var cols = [q.artist, q.album, q.title];
-   q.ModifyColumnsIcon(cols, "arrow-up");
-
-   Backend.UpdateQueueStatus();
-}
-
-function getQueueStatus() {
-   return QueueStatus;
-}
-
-function updatePlainOlQueue() {
-   var s = getQueueStatus();
-   if (s === null) {
-      return;
-   }
-   var q = getPlainOlQueue();
-   if (q === null) {
-      return;
-   }
-   q.SetSongs(s["songs"]);
-}
-
 function keyupHandler(evt) {
    var focused = document.activeElement;
    if (focused.nodeName === "TEXTAREA" ||
@@ -586,19 +409,15 @@ function keyupHandler(evt) {
    }
 }
 
-var Transport = null;
-
-// NOTE: This function has become the de facto "initialize everything in cmr.js" function
-function plainOlPlayerInit() {
-   // TODO: everything in this function should be moved elsewhere
-   Transport = makeTransport();
-   document.getElementById("transport").appendChild(Transport.element);
-   initStatusTimer();
+function coreInit() {
+   initStatusTimer(); // cofigures player status polling
    NewPlayerStatus.addCallback(function() {
       document.title = "PoP: " + PlayerStatus["title"] + " - " + PlayerStatus["artist"] + PlayerStatus["path"];
    });
-   QueueUpdated.addCallback(updatePlainOlQueue);
+   // get initial statuses
    Backend.UpdatePlayerStatus();
+   Backend.UpdateQueueStatus();
+   Backend.GetPlaylists();
    document.addEventListener("keyup", keyupHandler, false);
 }
 
@@ -667,31 +486,6 @@ function playlistsLoaded(playlists, x, y, onPlClick) {
 }
 
 function noOp() {}
-
-function selectPlaylist(x, y, callback) {
-   Backend.GetPlaylists(response => {
-      var playlists = response.split("\n");
-      playlistsLoaded(playlists, x, y - 200, callback);
-   });
-}
-
-function addToPlaylistClick(evt) {
-   var x = evt.clientX;
-   var y = evt.clientY;
-   selectPlaylist(evt.pageX, evt.pageY, pl =>
-         Backend.AddSongToPlaylist({ path: PlayerStatus["path"] }, pl));
-}
-
-function selectString(strings, icons, x, y, cb) {
-   var c = stringSelector(strings, icons, cb, true);
-   c.style.position = "absolute";
-   c.style.left = x;
-   c.style.top = y;
-   document.body.appendChild(c);
-   if (parseInt(c.style.left) + c.clientWidth > window.innerWidth) {
-      c.style.left = window.innerWidth - c.clientWidth + "px";
-   }
-}
 
 function platformInit() {
    if (window.mobilecheck()) {

@@ -1,4 +1,7 @@
+// Requires:
+// selectPlaylist
 
+// set up to use an existing table
 function makeSongList(tableId) {
    var ret = {
       addDefaultColumns: function(columns) {
@@ -93,8 +96,10 @@ function makeSongList(tableId) {
          div.appendChild(this.makeButton("floppy-o",
                () => {
                   var matches = This.getMatching("album", tr.song["album"], tr.song);
-                  // TODO: Add multiple at a time
-                  matches.forEach(m => Backend.AddSongToPlaylist(m));
+                  selectPlaylist(playlist => {
+                     // TODO: Add multiple at a time
+                     matches.forEach(m => Backend.AddSongToPlaylist(m, playlist));
+                  });
                }));
 
          var text = document.createTextNode(text);
@@ -121,8 +126,7 @@ function makeSongList(tableId) {
                () => { Backend.EnqueueSong(tr.song); Backend.MoveSongToTopOfQueue(tr.song); } ));
          div.appendChild(this.makeButton("floppy-o",
                evt => {
-               selectPlaylist(evt.pageX, evt.pageY,
-                  playlist => { Backend.AddSongToPlaylist(tr.song, playlist); });
+               selectPlaylist(playlist => { Backend.AddSongToPlaylist(tr.song, playlist); });
                }));
          div.appendChild(text);
          tr.appendChild(div);
