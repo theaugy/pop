@@ -2,6 +2,7 @@ var Results = null;
 var ResultsSongTable = null;
 var Transport = null;
 var Nav = null;
+var QueueSongServer = null;
 
 function refreshResults() {
    if (Results == null) {
@@ -93,25 +94,6 @@ function cmrsearchInit() {
    ResultsSongTable = makeSongList("resultList");
    ResultsSongTable.historySize = 10; // can probably get away with even more...
 
-   if (ResultsSongTable.album) {
-      ResultsSongTable.album.Button(
-            (song, evt) => enqueueMatching('album', song['album'], song));
-      ResultsSongTable.album.Icon("plus");
-      ResultsSongTable.album.buttonAppliesToMatches = true;
-   }
-   if (ResultsSongTable.artist) {
-      ResultsSongTable.artist.Button(
-            (song, evt) => enqueueMatching('artist', song['artist'], song));
-      ResultsSongTable.artist.Icon("plus");
-      ResultsSongTable.artist.buttonAppliesToMatches = true;
-   }
-   if (ResultsSongTable.title) {
-      ResultsSongTable.title.Button(
-            (song, evt) => Backend.EnqueueSong(song));
-      ResultsSongTable.title.Icon("plus");
-      ResultsSongTable.title.buttonAppliesToMatches = true;
-   }
-
    emptyResultList();
 
    ResultsSongTable.SetCookieStore("CmrResults");
@@ -134,6 +116,13 @@ function cmrsearchInit() {
    if (!window.location.hash) {
       window.location.hash = "#player";
    }
+
+   // create a queue song server. when the queue is updated, update the
+   // songs on the server.
+   QueueSongServer = makeSongServer("queue");
+   QueueUpdated.addCallback(() => {
+      QueueSongServer.SetSongs(QueueStatus.songs);
+   });
 }
 
 function selectPlaylist(callback) {

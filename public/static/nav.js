@@ -6,6 +6,7 @@
 // QueueStatus
 // QueueUpdated
 // Backend
+// QueueSongServer
 
 function makeAZCombo() {
    var c = document.createElement("div");
@@ -143,9 +144,13 @@ var makeNav = function(divId) {
 
    ret.Add("random", () => Backend.GetRandomSongs(50, queryCallback));
    ret.Add("last 30 days", lastThirtyClick);
-   var queueBtn = ret.Add("queue", () => ResultsSongTable.SetSongs(QueueStatus['songs']));
+   var queueBtn = ret.Add("queue", () => ResultsSongTable.SetSongServer(QueueSongServer));
    ret.Add("playlists", () => {
       if (ret.playlistsVisible) { // going visible to hidden
+         if (ret.playlistClickCb) {
+            console.log("Cancelling GetPlaylistTarget()");
+            ret.playlistClickCb = null; // treat this like 'cancelling' the GetPlaylistTarget() request
+         }
          ret.playlistItems.forEach(namediv => { namediv.className = "indentedNav navHide" });
          ret.playlistsVisible = false;
       } else { // going hidden to visible

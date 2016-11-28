@@ -217,6 +217,19 @@ main {
    border-top: 1px solid #007777;
 }
 
+.SongListDivider .SongListHeavy {
+   display: inline-block;
+   font-weight: bolder;
+   margin-right: 1vmin;
+   font-size: larger;
+}
+
+.SongListDivider .SongListLight {
+   display: inline-block;
+   font-weight: 100;
+   font-size: larger;
+}
+
 .SongListIcon {
    margin-right: 1vmin;
    font-weight: lighter;

@@ -20,15 +20,24 @@ window.mobilecheck = function() {
    return check;
 };
 
-Event.prototype.addCallback = function(c) {
+Event.prototype.addCallback = function(c, uuid) {
    if (c !== null) {
-      this.callbacks.push(c);
+      this.callbacks.push({ cb: c, uuid: uuid});
    }
+}
+
+Event.prototype.removeCallback = function(uuid) {
+   if (uuid === undefined) return; // don't allow removing all anonymous callbacks
+   var tmp = [];
+   this.callbacks.forEach(cb => {
+      if (cb.uuid !== uuid) tmp.push(cb);
+   });
+   this.callbacks = tmp;
 }
 
 Event.prototype.trigger = function() {
    for (var i = 0; i < this.callbacks.length; ++i) {
-      this.callbacks[i]();
+      this.callbacks[i].cb(this.cbData);
    }
 }
 

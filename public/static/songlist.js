@@ -1,45 +1,13 @@
 // Requires:
 // selectPlaylist
 
+var SongListUuidCounter = 0;
 // set up to use an existing table
 function makeSongList(tableId) {
    var ret = {
-      addDefaultColumns: function(columns) {
-         if (!columns) {
-            if (window.mobilecheck()) {
-               columns = "Artist|Title|Album";
-            } else {
-               columns = "Artist|Title|Album|Path";
-            }
-         }
-         if (columns.includes("Artist")) {
-            this.artist = new CustomColumn("Artist");
-            this.artist.Text(function(song) { return song["artist"]; });
-            this.AddCustomColumn(this.artist);
-         }
-         if (columns.includes("Title")) {
-            this.title = new CustomColumn("Title");
-            this.title.Text(function(song) { return song["title"]; });
-            this.AddCustomColumn(this.title);
-         }
-         if (columns.includes("Album")) {
-            this.album = new CustomColumn("Album");
-            this.album.Text(function(song) { return song['album']; });
-            this.AddCustomColumn(this.album);
-         }
-         if (columns.includes("Path")) {
-            this.path = new CustomColumn("Path");
-            this.path.Text(function(song) { return song['path']; });
-            this.path.Polish(function(td) {
-               td.style.fontSize = "smaller";
-            });
-            this.AddCustomColumn(this.path);
-         }
-      },
-      makeSongRow: function(song, key) {
+      makeSongRow: function(song) {
          var tr = document.createElement("tr");
          tr.song = song;
-         tr.songValue = song[key];
          return tr;
       },
       getMatching: function(field, value, clickedSong) {
@@ -71,7 +39,7 @@ function makeSongList(tableId) {
          div.className = "SongListIcon";
          return div;
       },
-      fillAsDivider: function(tr, text) {
+      fillAsDivider: function(tr, heavyText, lightText) {
          var div = document.createElement("div");
 
          var This = this;
@@ -102,8 +70,16 @@ function makeSongList(tableId) {
                   });
                }));
 
-         var text = document.createTextNode(text);
-         div.appendChild(text);
+         var heavyDiv = document.createElement("div");
+         heavyDiv.appendChild(document.createTextNode(heavyText));
+         heavyDiv.className = "SongListHeavy";
+         div.appendChild(heavyDiv);
+
+         var lightDiv = document.createElement("div");
+         lightDiv.appendChild(document.createTextNode(lightText));
+         lightDiv.className = "SongListLight";
+         div.appendChild(lightDiv);
+
          tr.appendChild(div);
          tr.className += "SongListDivider";
          tr.rowType = "divider";
@@ -113,9 +89,9 @@ function makeSongList(tableId) {
          d.className = "hrule";
          return d;
       },
-      fillAsChild: function(tr) {
+      fillAsChild: function(tr, text) {
          var div = document.createElement("div");
-         var text = document.createTextNode(tr.songValue);
+         var text = document.createTextNode(text);
          var This = this;
          div.appendChild(this.makeButton("times",
                   ()=>Backend.DequeueSong(tr.song)));
@@ -143,29 +119,81 @@ function makeSongList(tableId) {
          this.table.appendChild(tr);
       },
       SetSongs: function(songs) {
+         // This is called by clients who just want to put up a static list of
+         // songs.
+         this.ClearSongServer();
+         this.setSongs(songs);
+      },
+      setSongs: function(songs) {
          this.Clear();
          var This = this;
          var lastAlbum = "INIT_LAST_ALBUM";
          this.currentSongs = songs;
-         songs.forEach(song => {
-            if (song['album'] !== lastAlbum) {
-               // create a new divider
-               var tr = This.makeSongRow(song, 'album');
-               This.fillAsDivider(tr, song['artist'] + " - " + song['album']);
-               This.addTR(tr);
-               lastAlbum = song['album'];
+         var thisSection = [];
+         var commitSection = function() {
+            if (thisSection.length === 0) return;
+
+            // should we use the first artist's name or Various Artists?
+            var albumArtist = thisSection[0].artist;
+            var isVA = false;
+            for (var i = 0; i < thisSection.length; ++i) {
+               if (thisSection[i].artist !== albumArtist) {
+                  albumArtist = "Various Artists";
+                  isVA = true;
+                  break;
+               }
             }
-            // make
-            var tr = This.makeSongRow(song, 'title');
-            This.fillAsChild(tr);
+
+            const dividerSong = thisSection[0]; // doesn't really matter which
+            var tr = This.makeSongRow(dividerSong);
+            This.fillAsDivider(tr, albumArtist, dividerSong.album);
             This.addTR(tr);
+
+            thisSection.forEach(song => {
+               var tr = This.makeSongRow(song);
+               if (isVA) {
+                  This.fillAsChild(tr, song.artist + " - " + song.title);
+               } else {
+                  This.fillAsChild(tr, song.title);
+               }
+               This.addTR(tr);
+            });
+
+            thisSection = [];
+         };
+
+         songs.forEach(song => {
+            if (song.album !== lastAlbum) {
+               commitSection();
+            }
+            lastAlbum = song.album;
+            thisSection.push(song);
          });
+         commitSection();
+      },
+      ClearSongServer: function() {
+         if (this.server !== null) {
+            this.server.Updated.removeCallback(this.uuid);
+            console.log("setting server to null");
+            this.server = null;
+         }
+      },
+      SetSongServer: function(server) {
+         this.ClearSongServer();
+         this.server = server;
+         var This = this;
+         this.server.Updated.addCallback(function() {
+            This.setSongs(This.server.songs);
+         }, this.uuid);
+         This.setSongs(server.songs);
       },
       SetCookieStore: function() {
          // TODO
       }
    };
 
+   ret.uuid = "SongList_" + (SongListUuidCounter++);
+   ret.server = null;
    ret.table = document.getElementById(tableId);
    ret.table.className = "SongList";
    ret.currentSongs = [];

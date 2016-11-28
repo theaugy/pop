@@ -3,7 +3,6 @@ function makeTools() {
       Add: function(name, script) {
          var b = document.createElement("button");
          b.appendChild(document.createTextNode(name));
-         const argstring = "";
          b.toolFinished = (msg) => console.log(JSON.parse(msg));
          b.runTool = () => Backend.RunServerSideTool(['name', script], b.toolFinished);
          b.onclick = b.runTool;
