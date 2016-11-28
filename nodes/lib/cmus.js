@@ -37,7 +37,7 @@ function retrofitPopQ(pq) {
          // individual song
          var keep = [];
          this.songs.forEach(song => {
-            if (song !== paths) {
+            if (song.path !== paths) {
                keep.push(song);
             }
          });
@@ -212,7 +212,6 @@ const cmusProto = {
    },
    Enqueue: function(path) {
       LOG.info("Enqueueing " + path + " to " + PopQ.name);
-      var name = PopQ.name;
       var This = this;
       return this.S(function() {
          PopQ.append(path);
@@ -280,7 +279,6 @@ const cmusProto = {
    Dequeue: function(path) {
       LOG.info("Dequeueing " + path + " from " + PopQ.name);
       var This = this;
-      var name = PopQ.name;
       return this.S(() => {
          PopQ.remove(path);
          return This.savePopQ()().then(This.dequeue(path)).then(This.queueStatus());
