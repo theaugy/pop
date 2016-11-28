@@ -2,12 +2,21 @@ function makeTools() {
    var ret = {
       Add: function(name, script) {
          var b = document.createElement("button");
-         b.appendChild(document.createTextNode(name));
          b.toolFinished = (msg) => console.log(JSON.parse(msg));
          b.runTool = () => Backend.RunServerSideTool(['name', script], b.toolFinished);
+         b.appendChild(document.createTextNode(name));
          b.onclick = b.runTool;
          ret.element.appendChild(b);
          this.tools.push({ button: b, name: name, script: script });
+         ret.element.appendChild(document.createElement("br"));
+         return b;
+      },
+      // means "add a button that doesn't run a backend tool"
+      AddNonTool: function(name, cb) {
+         var b = document.createElement("button");
+         b.appendChild(document.createTextNode(name));
+         b.onclick = cb;
+         ret.element.appendChild(b);
          ret.element.appendChild(document.createElement("br"));
          return b;
       }
@@ -18,5 +27,7 @@ function makeTools() {
 
    ret.Add("Chromecast", "chromecast");
    ret.Add("Desk", "desk");
+   ret.AddNonTool("Augy", () => Backend.SelectQueue("augy"));
+   ret.AddNonTool("Stella", () => Backend.SelectQueue("stella"));
    return ret;
 }

@@ -9,5 +9,6 @@ function makeSongServer(name) {
    };
    ret.Updated = new Event(name + "_Updated");
    ret.songs = [];
+   ret.buttonMask = ['play', 'save', 'remove' ];
    return ret;
 }

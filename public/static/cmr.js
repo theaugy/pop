@@ -250,6 +250,9 @@ BackendImpl.prototype.MoveSongToTopOfQueue = function(song) {
    this.requestAndUpdateQueueStatus("topqueue?" + makeArgs(["path", song['path']]));
 }
 
+// WARNING: MoveSongsToTopOfQueue is somewhat meaningless with the new
+// 'persistent queue' feature. Some way to reorder the queue is
+// probably needed, but it hasn't been established yet.
 BackendImpl.prototype.MoveSongsToTopOfQueue = function(songs) {
    var args = [];
    songs.forEach((s) => { args.push("path"); args.push(s['path']); });
@@ -275,6 +278,14 @@ BackendImpl.prototype.DequeueSongs = function(songs) {
    var args = [];
    songs.forEach((s) => { args.push("path"); args.push(s['path']); });
    this.requestAndUpdateQueueStatus("dequeue?" + makeArgs(args));
+}
+
+BackendImpl.prototype.QueueJump = function(song) {
+   this.requestAndUpdatePlayerStatus("queueJump?" + makeArgs(['path', song.path]));
+}
+
+BackendImpl.prototype.SelectQueue = function(name) {
+   this.requestAndUpdateQueueStatus("selectQueue?" + makeArgs(['name', name]));
 }
 
 // I don't remember the format of the response. Probably { songs: [ song1, song2, ... ] }

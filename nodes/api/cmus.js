@@ -47,6 +47,14 @@ module.exports = {
    topqueue: function(req, res) {
       var args = ARGS.buildArgs(req, res);
       cmus.TopQueue(args.Get("path")).then(j => R(j, res, req));
+   },
+   queueJump: function(req, res) {
+      var args = ARGS.buildArgs(req, res);
+      cmus.QueueJump(args.Get("path")).then(j => R(j, res, req));
+   },
+   selectQueue: function(req, res) {
+      var args = ARGS.buildArgs(req, res);
+      cmus.SelectQueue(args.Get("name")).then(j => R(j, res, req));
    }
 }
 

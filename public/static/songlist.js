@@ -42,33 +42,9 @@ function makeSongList(tableId) {
       fillAsDivider: function(tr, heavyText, lightText) {
          var div = document.createElement("div");
 
-         var This = this;
-         div.appendChild(this.makeButton("times",
-                  () => {
-                     var matches = This.getMatching("album", tr.song["album"], tr.song);
-                     if (matches.length > 0) Backend.DequeueSongs(matches);
-                  }));
-         div.appendChild(this.makeButton("plus",
-               () => {
-                  var matches = This.getMatching("album", tr.song["album"], tr.song);
-                  if (matches.length > 0) Backend.EnqueueSongs(matches);
-               }));
-         div.appendChild(this.makeButton("play-circle-o",
-               () => {
-                  var matches = This.getMatching("album", tr.song["album"], tr.song);
-                  if (matches.length > 0) {
-                     Backend.EnqueueSongs(matches);
-                     Backend.MoveSongsToTopOfQueue(matches);
-                  }
-               }));
-         div.appendChild(this.makeButton("floppy-o",
-               () => {
-                  var matches = This.getMatching("album", tr.song["album"], tr.song);
-                  selectPlaylist(playlist => {
-                     // TODO: Add multiple at a time
-                     matches.forEach(m => Backend.AddSongToPlaylist(m, playlist));
-                  });
-               }));
+         var buttons = this.dividerButtons;
+         var mask = this.getButtonMask();
+         mask.forEach(b => div.append(buttons[b](tr.song)));
 
          var heavyDiv = document.createElement("div");
          heavyDiv.appendChild(document.createTextNode(heavyText));
@@ -89,21 +65,21 @@ function makeSongList(tableId) {
          d.className = "hrule";
          return d;
       },
+      getButtonMask: function() {
+         var mask;
+         if (this.server)
+            mask = this.server.buttonMask;
+         if (mask === undefined)
+            mask = this.defaultButtonMask;
+         return mask;
+      },
       fillAsChild: function(tr, text) {
          var div = document.createElement("div");
          var text = document.createTextNode(text);
          var This = this;
-         div.appendChild(this.makeButton("times",
-                  ()=>Backend.DequeueSong(tr.song)));
-         div.appendChild(this.makeButton("plus",
-               () => Backend.EnqueueSong(tr.song)));
-         div.appendChild(this.makeButton("play-circle-o",
-                  // NOTE: inherently racy
-               () => { Backend.EnqueueSong(tr.song); Backend.MoveSongToTopOfQueue(tr.song); } ));
-         div.appendChild(this.makeButton("floppy-o",
-               evt => {
-               selectPlaylist(playlist => { Backend.AddSongToPlaylist(tr.song, playlist); });
-               }));
+         var buttons = this.songButtons;
+         var mask = this.getButtonMask();
+         mask.forEach(b => div.appendChild(buttons[b](tr.song)));
          div.appendChild(text);
          tr.appendChild(div);
          tr.className += "SongListChild";
@@ -197,5 +173,58 @@ function makeSongList(tableId) {
    ret.table = document.getElementById(tableId);
    ret.table.className = "SongList";
    ret.currentSongs = [];
+   ret.defaultButtonMask = ['add', 'save'];
+
+   ret.songButtons = {
+      add: function(song) {
+         return ret.makeButton("plus", ()=>Backend.EnqueueSong(song));
+      },
+      save: function(song) {
+         return ret.makeButton("floppy-o", ()=> {
+               selectPlaylist(playlist => { Backend.AddSongToPlaylist(song, playlist); });
+               });
+      },
+      play: function(song) {
+         return ret.makeButton("play-circle-o", ()=> Backend.QueueJump(song));
+      },
+      remove: function(song) {
+         return ret.makeButton("times", ()=>Backend.DequeueSong(song));
+      }
+   };
+   ret.dividerButtons = {
+      add: function(song) {
+         return ret.makeButton("plus",
+               () => {
+                  var matches = ret.getMatching("album", song["album"], song);
+                  if (matches.length > 0) Backend.EnqueueSongs(matches);
+               });
+      },
+      play: function(song) {
+         return ret.makeButton("play-circle-o",
+               () => {
+                  var matches = ret.getMatching("album", song["album"], song);
+                  if (matches.length > 0) {
+                     Backend.QueueJump(matches[0]);
+                  }
+               });
+      },
+      save: function(song) {
+         return ret.makeButton("floppy-o",
+               () => {
+                  var matches = This.getMatching("album", tr.song["album"], tr.song);
+                  selectPlaylist(playlist => {
+                     // TODO: Add multiple at a time
+                     matches.forEach(m => Backend.AddSongToPlaylist(m, playlist));
+                  });
+               });
+      },
+      remove: function(song) {
+         return ret.makeButton("times",
+               () => {
+               var matches = ret.getMatching("album", song["album"], song);
+               if (matches.length > 0) Backend.DequeueSongs(matches);
+         });
+      }
+   };
    return ret;
 }

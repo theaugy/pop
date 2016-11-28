@@ -4,14 +4,76 @@ const LOG = require('../lib/log.js');
 const SONG = require('../lib/song.js');
 const decoder = new (require("string_decoder").StringDecoder);
 const fs = require('fs');
+const queueFile = "../private/queues.json";
 
-function makeQueueStatus(songList) {
+function makeQueueStatus(name, songList) {
    var ret = {};
    ret.songs = [];
    SAFETY.ensureDefined([songList], ['songList']);
    ret.songs = songList;
+   ret.name = name;
    return ret;
 }
+
+function makePopQ(name) {
+   var ret = {};
+   ret.songs = [];
+   ret.name = name;
+   retrofitPopQ(ret);
+   return ret;
+}
+
+function retrofitPopQ(pq) {
+   pq.remove = function(paths) {
+      if (Array.isArray(paths)) {
+         var keep = [];
+         this.songs.forEach(song => {
+            if (paths.indexOf(song.path) < 0) {
+               keep.push(song);
+            }
+         });
+         this.songs = keep;
+      } else {
+         // individual song
+         var keep = [];
+         this.songs.forEach(song => {
+            if (song !== paths) {
+               keep.push(song);
+            }
+         });
+         this.songs = keep;
+      }
+   };
+   pq.append = function(paths) {
+      var This = this;
+      if (Array.isArray(paths)) {
+         paths.forEach(p => This.songs.push(SONG.parseSong(p)));
+      } else {
+         This.songs.push(SONG.parseSong(paths));
+      }
+   };
+}
+
+function retrofitPopQSet(set) {
+   // TODO: just iterate members?
+   retrofitPopQ(set.stella);
+   retrofitPopQ(set.augy);
+   PopQ = set.augy;
+   console.log("Stella: " + set.stella.songs.length);
+   console.log("Augy: " + set.augy.songs.length);
+}
+
+var PopQSet = {};
+
+(function () {
+   var r = fs.createReadStream(queueFile, { encoding: 'utf8' });
+   var d = "";
+   r.on('data', chunk => d += chunk);
+   r.on('end', () => { PopQSet = JSON.parse(d); retrofitPopQSet(PopQSet); });
+})();
+
+
+var PopQ;
 
 function makePlayerStatus(args)
 {
@@ -61,7 +123,6 @@ const cmusRemotePath = "/usr/local/bin/cmus-remote";
 
 const makeCmusRemote = function() {
    var ret = {
-      // returns a function that runs the command
       command: function(args) {
          var This = this;
          var output = spawn(cmusRemotePath, args);
@@ -95,8 +156,10 @@ const makeCmusRemote = function() {
 // The uppercase version calls S() to sync. Only one of these is
 // allowed per request. The function passed to S() should create a promise.
 // As long as we never call an uppercase function, the system works.
+//
+// Changes to PopQ should be done only by entry-level functions (i.e., capital first letter)
 const cmusProto = {
-   queueStatus: function() {
+   cmusQueueStatus: function() {
       var This = this;
       return function() {
          var paths = [];
@@ -113,7 +176,20 @@ const cmusProto = {
                LOG.warn("Error getting cmus status. Retry " + ++retryCount);
             }
          } while (!goodRun);
-         return Promise.resolve(makeQueueStatus(This.pathsToSongs(paths)));
+         return Promise.resolve(makeQueueStatus("Cmus Queue", This.pathsToSongs(paths)));
+      };
+   },
+   // queueStatus() will from now on be assumed to refer to the popq status, which is a queue
+   // that does not get 'consumed' as tracks are played. the cmus queue is the actual queue
+   // in cmus. The illusion of a non-consumed queue is provided by manipulating the cmus
+   // queue.
+   queueStatus: function() {
+      return this.popqStatus();
+   },
+   popqStatus: function() {
+      var This = this;
+      return function() {
+         return Promise.resolve(makeQueueStatus("PoP Queue", PopQ.songs));
       };
    },
    QueueStatus: function() {
@@ -135,10 +211,12 @@ const cmusProto = {
       return SONG.parseSongs(paths);
    },
    Enqueue: function(path) {
-      LOG.info("Enqueueing " + path);
+      LOG.info("Enqueueing " + path + " to " + PopQ.name);
+      var name = PopQ.name;
       var This = this;
       return this.S(function() {
-         return This.enqueue(path)().then(This.queueStatus());
+         PopQ.append(path);
+         return This.savePopQ()().then(This.enqueue(path)).then(This.queueStatus());
       });
    },
    // puts paths in a temporary m3u, then pushes the path of that temporary
@@ -200,11 +278,16 @@ const cmusProto = {
       };
    },
    Dequeue: function(path) {
-      LOG.info("Dequeueing " + path);
+      LOG.info("Dequeueing " + path + " from " + PopQ.name);
       var This = this;
-      return this.S(() => This.dequeue(path)().then(This.queueStatus()));
+      var name = PopQ.name;
+      return this.S(() => {
+         PopQ.remove(path);
+         return This.savePopQ()().then(This.dequeue(path)).then(This.queueStatus());
+      });
    },
    topQueue: function(path) {
+      LOG.warning("topQueue probably doesn't do what you want anymore.");
       var This = this;
       var tops = []; // paths that go on top
       var restOfSongs = []; // everything after
@@ -224,11 +307,50 @@ const cmusProto = {
             .then(This.enqueue(tops))
             .then(This.enqueue(restOfSongs))
             .then(This.queueStatus());
-      }
+      };
    },
    TopQueue: function(path) {
       LOG.info("Top Queueing " + path);
       return this.S(this.topQueue(path));
+   },
+   queueJump: function(path) {
+      var This = this;
+      var toQ = [];
+      return function() {
+         // enqueue everything at or after 'path' in PopQ
+         var matched = false;
+         PopQ.songs.forEach(s => {
+            if (!matched) matched = (s.path === path);
+            if (matched) {
+               toQ.push(s.path);
+            }
+         });
+         return Promise.resolve(This.clearQueue())
+            .then(This.enqueue(toQ))
+            .then(This.next())
+            .then(This.playerStatus())
+      };
+   },
+   QueueJump: function(path) {
+      LOG.info("Jumping to " + path + " in " + PopQ.name);
+      return this.S(this.queueJump(path));
+   },
+   SelectQueue: function(name) {
+      if (PopQSet[name] !== undefined) {
+         LOG.info("Switching to PopQSet: " + name);
+         PopQ = PopQSet[name];
+      } else {
+         LOG.warn("No PopQ named " + name);
+      }
+      return this.S(this.queueStatus());
+   },
+   savePopQ: function() {
+      return function() {
+         LOG.info("Saving queues to " + queueFile);
+         var file = fs.createWriteStream(queueFile, { flags: 'w', defaultEncoding: 'utf8' });
+         file.write(JSON.stringify(PopQSet));
+         return Promise.resolve(true);
+      };
    },
    oneShot: function(args) {
       var This = this;
