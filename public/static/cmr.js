@@ -20,15 +20,24 @@ window.mobilecheck = function() {
    return check;
 };
 
-Event.prototype.addCallback = function(c) {
+Event.prototype.addCallback = function(c, uuid) {
    if (c !== null) {
-      this.callbacks.push(c);
+      this.callbacks.push({ cb: c, uuid: uuid});
    }
+}
+
+Event.prototype.removeCallback = function(uuid) {
+   if (uuid === undefined) return; // don't allow removing all anonymous callbacks
+   var tmp = [];
+   this.callbacks.forEach(cb => {
+      if (cb.uuid !== uuid) tmp.push(cb);
+   });
+   this.callbacks = tmp;
 }
 
 Event.prototype.trigger = function() {
    for (var i = 0; i < this.callbacks.length; ++i) {
-      this.callbacks[i]();
+      this.callbacks[i].cb(this.cbData);
    }
 }
 
@@ -45,6 +54,7 @@ var NowPlaying = new Event("NowPlaying");
 var NewPlayerStatus = new Event("NewPlayerStatus");
 var NextView = new Event("NextView");
 var PreviousView = new Event("PreviousView");
+var PlaylistsLoaded = new Event("PlaylistsLoaded");
 
 // This holds the current player status. It's a big object containing
 // stuff like the current track, whether we're playing or paused, the
@@ -79,25 +89,6 @@ function nowPaused(prev, cur) {
    return paused && !was;
 }
 
-// true if passed song is currently playing
-function isCurrentlyPlaying(song) {
-   var t = getPlainOlPlayerSongTable();
-   var current = t.currentSongs;
-   if (current == null && song == null) {
-      return true;
-   }
-   if (current == null) {
-      return false;
-   }
-   if (current.length === 0) {
-      return false;
-   }
-   if (current[0]["path"] === song["path"]) {
-      return true;
-   }
-   return false;
-}
-
 // true if we are playing any song
 function isPlaying() {
    if (PlayerStatus["status"] === "playing") {
@@ -109,6 +100,9 @@ function isPlaying() {
 
 // List of songs currently in the queue and misc. other infos
 var QueueStatus = null;
+
+// Playlists
+var Playlists = { refreshedAt: 0, playlists: [] };
 
 // This follows the convention that "public" functions are CapitalFirstCamelCase.
 // "private" functions are lowerFirstCamelCase. So don't call those, bru.
@@ -248,12 +242,6 @@ BackendImpl.prototype.SeekToSecond = function(second) {
    this.requestAndUpdatePlayerStatus("seekto?" + makeArgs(["s", second]));
 }
 
-// pl is just a name. It would be nice if playlists became "objects" in
-// the same sense that a song is an object.
-BackendImpl.prototype.AddCurrentSongToPlaylist = function(pl) {
-   this.request("addPlaylist?" + makeArgs(["name", pl]), function(){});
-}
-
 BackendImpl.prototype.AddSongToPlaylist = function(song, pl) {
    this.request("addPlaylist?" + makeArgs(["name", pl, 'path', song["path"]]), function(){});
 }
@@ -262,14 +250,31 @@ BackendImpl.prototype.MoveSongToTopOfQueue = function(song) {
    this.requestAndUpdateQueueStatus("topqueue?" + makeArgs(["path", song['path']]));
 }
 
+BackendImpl.prototype.MoveSongsToTopOfQueue = function(songs) {
+   var args = [];
+   songs.forEach((s) => { args.push("path"); args.push(s['path']); });
+   this.requestAndUpdateQueueStatus("topqueue?" + makeArgs(args));
+}
+
 // TODO: It might be nice to enqueue a song without triggering callbacks, or
 // enqueue multiple songs at once.
 BackendImpl.prototype.EnqueueSong = function(song) {
    this.requestAndUpdateQueueStatus("enqueue?" + makeArgs(["path", song["path"]]));
 }
+BackendImpl.prototype.EnqueueSongs = function(songs) {
+   var args = [];
+   songs.forEach((s) => { args.push("path"); args.push(s['path']); });
+   this.requestAndUpdateQueueStatus("enqueue?" + makeArgs(args));
+}
 
 BackendImpl.prototype.DequeueSong = function(song) {
    this.requestAndUpdateQueueStatus("dequeue?" + makeArgs(["path", song["path"]]));
+}
+
+BackendImpl.prototype.DequeueSongs = function(songs) {
+   var args = [];
+   songs.forEach((s) => { args.push("path"); args.push(s['path']); });
+   this.requestAndUpdateQueueStatus("dequeue?" + makeArgs(args));
 }
 
 // I don't remember the format of the response. Probably { songs: [ song1, song2, ... ] }
@@ -277,13 +282,22 @@ BackendImpl.prototype.GetCurrentPlaylist = function(callback) {
    this.request("playlist", callback);
 }
 
-BackendImpl.prototype.RunServerSideTool = function(name, argstring, callback) {
-   this.request("tool?" + makeArgs([name, argstring]), callback);
+// args=name,value,name,value,etc
+BackendImpl.prototype.RunServerSideTool = function(args, callback) {
+   this.request("tool?" + makeArgs(args), callback);
 }
 
 // returns newline-separated playlist names
 BackendImpl.prototype.GetPlaylists = function(callback) {
-   this.request("listPlaylist", callback);
+   this.request("listPlaylist", (newlineSeparatedPlaylistNames) =>
+         {
+            // update playlist state
+            var playlists = newlineSeparatedPlaylistNames.split("\n");
+            Playlists = { refreshedAt: Date.now(), playlists: playlists };
+            PlaylistsLoaded.trigger();
+            // now call the passed callback, if any
+            if (callback) callback(newlineSeparatedPlaylistNames);
+         });
 }
 
 // returns something like { songs: [ song1, song2, ... ] }
@@ -354,27 +368,6 @@ function initStatusTimer() {
    });
 }
 
-// This is weird code bcause it's basically here just so that cmrui.js can call it.
-// cmrui.js pre-dates the Backend object, so it could use some updating.
-var BTN_PLAYING = "playing";
-var BTN_PAUSED = "paused";
-function playPauseClick () {
-   if (getPlayerStatus ()["status"] === BTN_PAUSED) {
-      Backend.Play();
-   }
-   else if (getPlayerStatus ()["status"] === BTN_PLAYING) {
-      Backend.Pause();
-   }
-}
-
-function nextClick () {
-   Backend.NextSong();
-}
-
-function prevClick () {
-   Backend.PreviousSong();
-}
-
 function getPlayerStatus () {
    return PlayerStatus;
 }
@@ -402,258 +395,6 @@ function clearChildren(el) {
    }
 }
 
-var PlainOlPlayerSongTable = null;
-
-function getPlainOlPlayerSongTable() {
-   if (PlainOlPlayerSongTable === null) {
-      PlainOlPlayerSongTable = new SongTable("popTable", "Artist|Title|Album");
-      var t = PlainOlPlayerSongTable; // big ol' name
-      t.historySize = 100;
-      // the default column titles are kinda noisy
-      t.artist.name = "";
-      t.artist.Icon("");
-      t.title.name = "";
-      t.title.Icon("");
-      t.album.name = "";
-      t.album.Icon("");
-      t.SetCookieStore("PoPNowPlaying");
-
-      if (!window.mobilecheck()) {
-         var bm = new CustomColumn("");
-         bm.Text(song => "-1m");
-         bm.Button(song => Backend.SeekBackward1Minute());
-         t.AddCustomColumn(bm);
-
-         var fm = new CustomColumn("");
-         fm.Text(song => "+1m");
-         fm.Button(song => Backend.SeekForward1Minute());
-         t.AddCustomColumn(fm);
-
-         var g2 = new CustomColumn("");
-         g2.Text(song => "goto...");
-         g2.Button(function(song) {
-            var pos = window.prompt("Position in seconds:", "0");
-            if (pos != null)
-            {
-               Backend.SeekToSecond(pos);
-            }
-         });
-         t.AddCustomColumn(g2);
-
-         var next = new CustomColumn("");
-         next.Text(song => "Next");
-         next.Button(song => backend.NextSong());
-         t.AddCustomColumn(next);
-      } else {
-         document.getElementById("popTable").className = "popTableMobile";
-      }
-   }
-   return PlainOlPlayerSongTable;
-}
-
-function makeCmusButton(text, fn) {
-   var b = document.createElement("button");
-   b.onclick = fn;
-   b.appendChild(document.createTextNode(text));
-   return b;
-}
-
-function updatePlainOlPlayer() {
-   var s = getPlayerStatus();
-   if (s === null) {
-      return;
-   }
-   if (!isCurrentlyPlaying(s)) {
-      // if you just SetSongs() blindly, you'll
-      // fill up the player's history with the same song.
-      var t = getPlainOlPlayerSongTable();
-      t.SetSongs([s]);
-   }
-   var statusText = document.getElementById("popStatusText");
-   clearChildren(statusText);
-   var pos = s['position'];
-   var dur = s['duration'];
-   statusText.appendChild(
-         document.createTextNode(
-            s["status"] + " " + pos + "/" + dur));
-
-   var prog = document.getElementById('popProgressBar');
-   if (prog) {
-      prog.style.width = (parseInt(pos) * 100) / parseInt(dur) + "%";
-   }
-
-   document.title = "PoP: " + s["title"] + " - " + s["artist"] + s["path"];
-}
-
-function newPlayerStatus(statStr) {
-   var prev = PlayerStatus;
-   PlayerStatus = JSON.parse (statStr);
-
-   // trigger events
-   if (trackChanged(prev, PlayerStatus)) {
-      TrackChanged.trigger();
-   }
-   if (nowPlaying(prev, PlayerStatus)) {
-      NowPlaying.trigger();
-   }
-   else if (nowPaused(prev, PlayerStatus)) {
-      NowPaused.trigger();
-   }
-
-   NewPlayerStatus.trigger();
-}
-
-function getTools() {
-   return document.getElementById("tools");
-}
-
-function toolCallback(msg) {
-   if (msg != null && msg.length > 0) {
-      alert(msg);
-   }
-}
-
-function makeToolButton(text, tool, argstring) {
-   var b = document.createElement("button");
-   b.appendChild(document.createTextNode(text));
-   b.onclick = () => Backend.RunServerSideTool(tool, argstring, toolCallback);
-   return b;
-}
-
-function toolsInit() {
-   var t = getTools();
-
-   t.appendChild(makeToolButton("Chromecast Init", "chromecast", ""));
-   //t.appendChild(makeToolButton("airport_pi Init", "shairport", ""));
-   //t.appendChild(makeToolButton("Fix Chromecast", "fixchromecast", ""));
-}
-
-var QueueSongTable = null;
-
-function getPlainOlQueue() {
-   if (QueueSongTable === null) {
-      QueueSongTable = new SongTable("plainOlQueue", "Artist|Title|Album");
-      QueueSongTable.historySize = 1; // no use for old queue states
-      QueueSongTable.artist.name = "";
-      QueueSongTable.artist.Icon("");
-      QueueSongTable.artist.buttonAppliesToMatches = true;
-      QueueSongTable.title.name = "";
-      QueueSongTable.title.Icon("");
-      QueueSongTable.title.buttonAppliesToMatches = true;
-      QueueSongTable.album.name = "";
-      QueueSongTable.album.Icon("");
-      QueueSongTable.album.buttonAppliesToMatches = true;
-   }
-   return QueueSongTable;
-}
-
-function getQueueButtons() {
-   return document.getElementById("plainOlQButtons");
-}
-
-function qdoMatching(evt, field, clickedSong, doer) {
-   if (doer === null) return;
-   var todo = QueueSongTable.getMatchingSongs(clickedSong, field);
-   if (todo.length > 0) {
-      doer(evt, todo);
-   }
-}
-
-function plainOlQueueInit() {
-   var q = getPlainOlQueue();
-   var buttons = getQueueButtons();
-   if (buttons !== null) {
-      var b = document.createElement("button");
-      b.appendChild(document.createTextNode("refresh"));
-      b.onclick = evt => Backend.UpdateQueueStatus();
-      buttons.appendChild(b);
-   }
-
-   // arrow-up
-   // bars
-   // times
-   // floppy-o
-
-   var menu = new CustomColumn("Menu");
-   menu.Icon("bars");
-   menu.actionList = [];
-   menu.actions = {};
-   menu.Text(song => "menu");
-   menu.GetCurrentAction = function() { return this.actions.current; };
-
-   menu.actions.remove = (evt, songs) => {
-      songs.forEach(s => Backend.DequeueSong(s));
-      Backend.UpdateQueueStatus(); // refresh status after dequeueing everything
-   };
-   menu.actionList.push(menu.actions.remove);
-
-   menu.actions.pladd = (evt, songs) => {
-      selectPlaylist(evt.pageX, evt.pageY, function(playlist) {
-         songs.forEach(s => Backend.AddSongToPlaylist(s, playlist));
-      });
-   };
-   menu.actionList.push(menu.actions.pladd);
-
-   menu.actions.playnext = (evt, songs) => {
-      songs.forEach(s => Backend.MoveSongToTopOfQueue(s));
-      Backend.UpdateQueueStatus(); // refresh status once at end
-   }
-   menu.actionList.push(menu.actions.playnext);
-
-   menu.Button(function(song, evt) {
-      selectString(["Add to playlist", "Remove", "Play Next"],
-                   ["floppy-o", "times", "arrow-up"], evt.pageX, evt.pageY,
-         function(selected) {
-            var cols = [q.artist, q.album, q.title];
-            if (selected === "Add to playlist") {
-               menu.actions.current = menu.actions.pladd;
-               q.ModifyColumnsIcon(cols, "floppy-o");
-            } else if (selected === "Remove") {
-               menu.actions.current = menu.actions.remove;
-               q.ModifyColumnsIcon(cols, "times");
-            } else if (selected === "Play Next") {
-               menu.actions.current = menu.actions.playnext;
-               q.ModifyColumnsIcon(cols, "arrow-up");
-            }
-         });
-   });
-
-   q.AddCustomColumn(menu);
-
-   q.artist.Button(function(song, evt) {
-      qdoMatching(evt, 'artist', song, menu.GetCurrentAction());
-   });
-   q.album.Button(function(song, evt) {
-      qdoMatching(evt, 'album', song, menu.GetCurrentAction());
-   });
-   q.title.Button(function(song, evt) {
-      qdoMatching(evt, 'title', song, menu.GetCurrentAction());
-   });
-
-   // establish the default action here
-   menu.actions.current = menu.actions.playnext;
-   var cols = [q.artist, q.album, q.title];
-   q.ModifyColumnsIcon(cols, "arrow-up");
-
-   Backend.UpdateQueueStatus();
-}
-
-function getQueueStatus() {
-   return QueueStatus;
-}
-
-function updatePlainOlQueue() {
-   var s = getQueueStatus();
-   if (s === null) {
-      return;
-   }
-   var q = getPlainOlQueue();
-   if (q === null) {
-      return;
-   }
-   q.SetSongs(s["songs"]);
-}
-
 function keyupHandler(evt) {
    var focused = document.activeElement;
    if (focused.nodeName === "TEXTAREA" ||
@@ -678,41 +419,15 @@ function keyupHandler(evt) {
    }
 }
 
-// NOTE: This function has become the de facto "initialize everything in cmr.js" function
-function plainOlPlayerInit() {
-   initStatusTimer();
-
-   var btns = document.getElementById("popButtons");
-   btns.appendChild(makeCmusButton("Play", () => Backend.Play()));
-   btns.appendChild(makeCmusButton("Pause", () => Backend.Pause()));
-   btns.appendChild(makeCmusButton("Next", () => Backend.NextSong()));
-   btns.appendChild(makeCmusButton("Previous", () => Backend.PreviousSong()));
-   btns.appendChild(makeCmusButton("fav", () => Backend.FavoriteCurrentSong()));
-   btns.appendChild(makeCmusButton("add to playlist...", addToPlaylistClick));
-   btns.appendChild(makeCmusButton("TOP", function() {
-      window.scrollBy(0, 0 - window.pageYOffset);
-   }));
-   // NOTE: btns also modified by cmrsearchinit
-
-   var statusText = document.getElementById("popStatusText");
-   statusText.style.fontSize = "smaller";
-
-   var prog = document.getElementById('popProgress');
-   prog.onclick = function (p) {
-      var prog = p;
-      return function(evt) {
-      var s = getPlayerStatus();
-      if (s) {
-         var x = evt.offsetX;
-         var pos = evt.offsetX / prog.offsetWidth;
-         pos = Math.round(pos * s['duration']);
-         Backend.SeekToSecond(pos);
-      }
-   }}(prog);
-
-   NewPlayerStatus.addCallback(updatePlainOlPlayer);
-   QueueUpdated.addCallback(updatePlainOlQueue);
+function coreInit() {
+   initStatusTimer(); // cofigures player status polling
+   NewPlayerStatus.addCallback(function() {
+      document.title = "PoP: " + PlayerStatus["title"] + " - " + PlayerStatus["artist"] + PlayerStatus["path"];
+   });
+   // get initial statuses
    Backend.UpdatePlayerStatus();
+   Backend.UpdateQueueStatus();
+   Backend.GetPlaylists();
    document.addEventListener("keyup", keyupHandler, false);
 }
 
@@ -781,30 +496,6 @@ function playlistsLoaded(playlists, x, y, onPlClick) {
 }
 
 function noOp() {}
-
-function selectPlaylist(x, y, callback) {
-   Backend.GetPlaylists(response => {
-      var playlists = response.split("\n");
-      playlistsLoaded(playlists, x, y - 200, callback);
-   });
-}
-
-function addToPlaylistClick(evt) {
-   var x = evt.clientX;
-   var y = evt.clientY;
-   selectPlaylist(evt.pageX, evt.pageY, pl => Backend.AddCurrentSongToPlaylist(pl));
-}
-
-function selectString(strings, icons, x, y, cb) {
-   var c = stringSelector(strings, icons, cb, true);
-   c.style.position = "absolute";
-   c.style.left = x;
-   c.style.top = y;
-   document.body.appendChild(c);
-   if (parseInt(c.style.left) + c.clientWidth > window.innerWidth) {
-      c.style.left = window.innerWidth - c.clientWidth + "px";
-   }
-}
 
 function platformInit() {
    if (window.mobilecheck()) {
