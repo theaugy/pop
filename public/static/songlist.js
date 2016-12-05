@@ -1,5 +1,6 @@
 // Requires:
 // selectPlaylist
+// Settings
 
 var SongListUuidCounter = 0;
 // set up to use an existing table
@@ -39,8 +40,21 @@ function makeSongList(tableId) {
          div.className = "SongListIcon";
          return div;
       },
-      fillAsDivider: function(tr, heavyText, lightText) {
+      toggleChildVisibility: function(childRows)
+      {
+         if (childRows.length === 0) return;
+         var vis;
+         var cur = childRows[0].style.display;
+         if (cur !== "default" && cur !== "") {
+            vis = "";
+         } else {
+            vis = "none";
+         }
+         childRows.forEach(r => r.style.display = vis);
+      },
+      fillAsDivider: function(tr, heavyText, lightText, childRows) {
          var div = document.createElement("div");
+         var This = this;
 
          var buttons = this.dividerButtons;
          var mask = this.getButtonMask();
@@ -49,21 +63,21 @@ function makeSongList(tableId) {
          var heavyDiv = document.createElement("div");
          heavyDiv.appendChild(document.createTextNode(heavyText));
          heavyDiv.className = "SongListHeavy";
+         heavyDiv.onclick = () => { This.toggleChildVisibility(childRows); };
          div.appendChild(heavyDiv);
 
          var lightDiv = document.createElement("div");
          lightDiv.appendChild(document.createTextNode(lightText));
          lightDiv.className = "SongListLight";
+         lightDiv.onclick = () => { This.toggleChildVisibility(childRows); };
          div.appendChild(lightDiv);
+
+         if (Settings.Get("albumDefaultState") === "collapsed")
+            This.toggleChildVisibility(childRows);
 
          tr.appendChild(div);
          tr.className += "SongListDivider";
          tr.rowType = "divider";
-      },
-      makeDivider: function() {
-         var d = document.createElement("div");
-         d.className = "hrule";
-         return d;
       },
       getButtonMask: function() {
          var mask;
@@ -120,11 +134,8 @@ function makeSongList(tableId) {
                }
             }
 
-            const dividerSong = thisSection[0]; // doesn't really matter which
-            var tr = This.makeSongRow(dividerSong);
-            This.fillAsDivider(tr, albumArtist, dividerSong.album);
-            This.addTR(tr);
-
+            // construct child TRs without actually adding them
+            var childRows = [];
             thisSection.forEach(song => {
                var tr = This.makeSongRow(song);
                if (isVA) {
@@ -132,8 +143,16 @@ function makeSongList(tableId) {
                } else {
                   This.fillAsChild(tr, song.title);
                }
-               This.addTR(tr);
+               childRows.push(tr);
             });
+
+            // pass those child TRs into fillAsDivider
+            const dividerSong = thisSection[0]; // doesn't really matter which
+            var tr = This.makeSongRow(dividerSong);
+            This.fillAsDivider(tr, albumArtist, dividerSong.album, childRows);
+            This.addTR(tr);
+
+            childRows.forEach(tr => This.addTR(tr));
 
             thisSection = [];
          };
@@ -211,7 +230,7 @@ function makeSongList(tableId) {
       save: function(song) {
          return ret.makeButton("floppy-o",
                () => {
-                  var matches = This.getMatching("album", tr.song["album"], tr.song);
+                  var matches = ret.getMatching("album", song["album"], song);
                   selectPlaylist(playlist => {
                      // TODO: Add multiple at a time
                      matches.forEach(m => Backend.AddSongToPlaylist(m, playlist));

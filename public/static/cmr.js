@@ -7,6 +7,7 @@
  * - StatusTimer
  * - Backend
  * - QueueStatus
+ * - Settings
  */
 
 function Event(name) {
@@ -100,6 +101,56 @@ function isPlaying() {
 
 // List of songs currently in the queue and misc. other infos
 var QueueStatus = null;
+
+
+var Settings = {
+   settings: {},
+   AddSetting: function(s) {
+      this.settings[s.name] = s;
+      s.changed.trigger();
+   },
+   get: function(name) {
+      var s = this.settings[name];
+      if (s === undefined)
+         throw "Setting not known: " + name;
+      return s;
+   },
+   Get: function(name) {
+      return this.get(name).value;
+   },
+   Set: function(name, value) {
+      var s = this.get(name);
+      if (!s.checker(value))
+         throw "Cannot set " + name + " to " + value + "; fails check according to " + s.checker;
+      s.value = value;
+      s.changed.trigger();
+   },
+   makeSetting: function(humanName, name, defaultValue, checker)
+   {
+      var ret = {};
+      ret.humanName = humanName;
+      ret.name = name;
+      if (!checker(defaultValue))
+      {
+         throw humanName + " (" + name + ") has invalid default value " +
+            defaultValue + " according to " + checker;
+      }
+      ret.checker = checker;
+      ret.value = defaultValue;
+      ret.defaultValue = defaultValue;
+      ret.changed = new Event(name + " changed");
+      ret.Set = function(value) {
+         ret.value = value;
+         ret.changed.trigger();
+      };
+      return ret;
+   }
+};
+Settings.AddSetting(Settings.makeSetting("Album default state",
+         "albumDefaultState", "expanded",
+         v => ["collapsed", "expanded"].indexOf(v) >= 0));
+// something for the queue mode?
+// Setings.AddSetting();
 
 // Playlists
 var Playlists = { refreshedAt: 0, playlists: [] };

@@ -29,5 +29,7 @@ function makeTools() {
    ret.Add("Desk", "desk");
    ret.AddNonTool("Augy", () => Backend.SelectQueue("augy"));
    ret.AddNonTool("Stella", () => Backend.SelectQueue("stella"));
+   ret.AddNonTool("Prefer Collapsed", () => Settings.Set("albumDefaultState", "collapsed"));
+   ret.AddNonTool("Prefer Expanded", () => Settings.Set("albumDefaultState", "expanded"));
    return ret;
 }
