@@ -70,6 +70,25 @@ function lastThirtyClick(evt) {
    Backend.SearchForSongs(q, queryCallback);
 }
 
+function lastSevenClick(evt) {
+   var y = new Date().getFullYear();
+   var m = new Date().getMonth() + 1;
+   var d = new Date().getDate();
+   if (d <= 7) {
+      d = d + 28 - 7;
+      if (m == 1) {
+         y--;
+         m = 12;
+      } else {
+         m--;
+      }
+   } else {
+      d = d - 7;
+   }
+   var q = "added:" + y + "-" + m + "-" + d + ".. album+";
+   Backend.SearchForSongs(q, queryCallback);
+}
+
 // configures itself on an existing div
 var makeNav = function(divId) {
    var ret = {
@@ -144,6 +163,7 @@ var makeNav = function(divId) {
 
    ret.Add("random", () => Backend.GetRandomSongs(50, queryCallback));
    ret.Add("last 30 days", lastThirtyClick);
+   ret.Add("last 7 days", lastSevenClick);
    var queueBtn = ret.Add("queue", () => ResultsSongTable.SetSongServer(QueueSongServer));
    ret.Add("playlists", () => {
       if (ret.playlistsVisible) { // going visible to hidden

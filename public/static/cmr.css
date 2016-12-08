@@ -1,6 +1,15 @@
 /*
  * nav width: 25vmin
  * nav indent: 2vmin
+ * background color: #161616
+ * foreground color: #4ddb9f
+ * recessed items: #4ddbaf
+ * artist: #4ddb9f
+ * artist opacity: .91;
+ * title: #4ddbff
+ * title opacity: 1.0;
+ * album: #4ddbbf
+ * album opacity: .71;
  */
 
 * {
@@ -40,7 +49,7 @@ input {
 }
 
 button:hover {
-   color: #4ddbff;
+   color: #4ddbaf;
 }
 
 div.overlay {
@@ -169,7 +178,7 @@ main {
    font-size: smaller;
    display: block;
    float: left;
-   border-right: 1px solid #007777;
+   border-right: 1px solid #4ddbaf;
    width: 25vmin;
    position: fixed;
    margin-left: 0px;
@@ -190,7 +199,7 @@ main {
 }
 
 .clickable:hover {
-   color: #4ddbff;
+   color: #4ddbaf;
 }
 
 @keyframes navHideKeys {
@@ -207,33 +216,52 @@ main {
 }
 
 .SongListDivider > div {
-   font-weight: 800;
+   font-weight: 700;
    margin: 0px;
    margin-bottom: .2vmin;
    margin-top: 2vmin;
    padding: 0px;
    width: 100%;
    padding-top: 2vmin;
-   border-top: 1px solid #007777;
+   border-top: 1px solid #4ddbaf;
 }
 
-.SongListDivider .SongListHeavy {
+.SongListSingle > div {
+   font-weight: 700;
+   margin: 0px;
+   margin-bottom: .2vmin;
+   margin-top: 2vmin;
+   padding: 0px;
+   width: 100%;
+}
+
+.SongList .SongListHeavy {
    display: inline-block;
    font-weight: bolder;
    margin-right: 1vmin;
-   font-size: larger;
+   color: #4ddb9f;
+   opacity: 1;
 }
 
-.SongListDivider .SongListLight {
+.SongList .SongListLight {
    display: inline-block;
    font-weight: 100;
-   font-size: larger;
+   color: #foofoo;
+   opacity: .71;
+}
+
+.SongList .SongListMedium {
+   display: inline-block;
+   margin-right: 1vmin;
+   font-weight: normal;
+   color: #4ddbbf;
+   opacity: .91;
 }
 
 .SongListIcon {
    margin-right: 1vmin;
    font-weight: lighter;
-   color: #007777;
+   color: #4ddbaf;
 }
 
 .hrule {
@@ -244,4 +272,12 @@ main {
 
 #resultList {
    width: 100%;
+}
+
+.tools {
+   opacity: .61;
+}
+
+.tools div:hover {
+   opacity: 1;
 }

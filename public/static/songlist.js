@@ -52,6 +52,24 @@ function makeSongList(tableId) {
          }
          childRows.forEach(r => r.style.display = vis);
       },
+      heavyDiv: function(text) {
+         var heavyDiv = document.createElement("div");
+         heavyDiv.appendChild(document.createTextNode(text));
+         heavyDiv.className = "SongListHeavy";
+         return heavyDiv;
+      },
+      lightDiv: function(text) {
+         var lightDiv = document.createElement("div");
+         lightDiv.appendChild(document.createTextNode(text));
+         lightDiv.className = "SongListLight";
+         return lightDiv;
+      },
+      mediumDiv: function(text) {
+         var mediumDiv = document.createElement("div");
+         mediumDiv.appendChild(document.createTextNode(text));
+         mediumDiv.className = "SongListMedium";
+         return mediumDiv;
+      },
       fillAsDivider: function(tr, heavyText, lightText, childRows) {
          var div = document.createElement("div");
          var This = this;
@@ -60,15 +78,11 @@ function makeSongList(tableId) {
          var mask = this.getButtonMask();
          mask.forEach(b => div.append(buttons[b](tr.song)));
 
-         var heavyDiv = document.createElement("div");
-         heavyDiv.appendChild(document.createTextNode(heavyText));
-         heavyDiv.className = "SongListHeavy";
+         var heavyDiv = this.heavyDiv(heavyText);
          heavyDiv.onclick = () => { This.toggleChildVisibility(childRows); };
          div.appendChild(heavyDiv);
 
-         var lightDiv = document.createElement("div");
-         lightDiv.appendChild(document.createTextNode(lightText));
-         lightDiv.className = "SongListLight";
+         var lightDiv = this.lightDiv(lightText);
          lightDiv.onclick = () => { This.toggleChildVisibility(childRows); };
          div.appendChild(lightDiv);
 
@@ -79,6 +93,24 @@ function makeSongList(tableId) {
          tr.className += "SongListDivider";
          tr.rowType = "divider";
       },
+      fillAsSingle: function(tr, heavyText, mediumText, lightText, childRows) {
+         var div = document.createElement("div");
+         var This = this;
+
+         var buttons = this.dividerButtons;
+         var mask = this.getButtonMask();
+         mask.forEach(b => div.append(buttons[b](tr.song)));
+
+         div.appendChild(this.heavyDiv(heavyText));
+         div.appendChild(this.mediumDiv(mediumText));
+         div.appendChild(this.lightDiv(lightText));
+
+         tr.appendChild(div);
+         // not exactly a divider, but hopefully you're looking at rowType instead of
+         // the className to figure out what you're looking at.
+         tr.className += "SongListSingle";
+         tr.rowType = "single";
+      },
       getButtonMask: function() {
          var mask;
          if (this.server)
@@ -87,14 +119,31 @@ function makeSongList(tableId) {
             mask = this.defaultButtonMask;
          return mask;
       },
-      fillAsChild: function(tr, text) {
+      fillAsChild: function(tr, opts) {
          var div = document.createElement("div");
-         var text = document.createTextNode(text);
+         var song = tr.song;
+         if (opts.isVa)
+         {
+            opts.artist = true;
+            opts.title = true;
+            opts.album = false;
+         }
+         else
+         {
+            opts.artist = false;
+            opts.title = true;
+            opts.album = false;
+         }
          var This = this;
          var buttons = this.songButtons;
          var mask = this.getButtonMask();
          mask.forEach(b => div.appendChild(buttons[b](tr.song)));
-         div.appendChild(text);
+         if (opts.artist)
+            div.appendChild(this.heavyDiv(song.artist));
+         if (opts.title)
+            div.append(this.mediumDiv(song.title));
+         if (opts.album)
+            div.append(this.lightDiv(song.title));
          tr.appendChild(div);
          tr.className += "SongListChild";
          tr.rowType = "child";
@@ -134,25 +183,32 @@ function makeSongList(tableId) {
                }
             }
 
-            // construct child TRs without actually adding them
-            var childRows = [];
-            thisSection.forEach(song => {
+            if (thisSection.length > 1) {
+               // construct child TRs without actually adding them
+               var childRows = [];
+               thisSection.forEach(song => {
+                  var tr = This.makeSongRow(song);
+                  if (isVA) {
+                     This.fillAsChild(tr, { isVa: true });
+                  } else {
+                     This.fillAsChild(tr, {});
+                  }
+                  childRows.push(tr);
+               });
+
+               // pass those child TRs into fillAsDivider
+               const dividerSong = thisSection[0]; // doesn't really matter which
+               var tr = This.makeSongRow(dividerSong);
+               This.fillAsDivider(tr, albumArtist, dividerSong.album, childRows);
+               This.addTR(tr);
+               childRows.forEach(tr => This.addTR(tr));
+            } else {
+               // make a single row
+               var song = thisSection[0];
                var tr = This.makeSongRow(song);
-               if (isVA) {
-                  This.fillAsChild(tr, song.artist + " - " + song.title);
-               } else {
-                  This.fillAsChild(tr, song.title);
-               }
-               childRows.push(tr);
-            });
-
-            // pass those child TRs into fillAsDivider
-            const dividerSong = thisSection[0]; // doesn't really matter which
-            var tr = This.makeSongRow(dividerSong);
-            This.fillAsDivider(tr, albumArtist, dividerSong.album, childRows);
-            This.addTR(tr);
-
-            childRows.forEach(tr => This.addTR(tr));
+               This.fillAsSingle(tr, song.artist, song.title, song.album);
+               This.addTR(tr);
+            }
 
             thisSection = [];
          };
