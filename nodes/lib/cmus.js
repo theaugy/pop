@@ -255,7 +255,7 @@ const cmusProto = {
       var This = this;
       var pathsToKeep = [];
       return function() {
-         return This.queueStatus()()
+         return This.cmusQueueStatus()()
             .then((current) => {
                // re-add each song that does not match
                if (Array.isArray(path)) {
