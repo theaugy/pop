@@ -138,7 +138,12 @@ var makeNav = function(divId) {
       },
       makeTagDiv: function(tag) {
          var namediv = document.createElement("div");
-         namediv.className = "indentedNav";
+         var idiv = document.createElement("span");
+         var i = document.createElement("i");
+         i.className = "fa fa-tag";
+         idiv.appendChild(i);
+         idiv.className = "navTagIcon";
+         namediv.appendChild(idiv);
          namediv.appendChild(document.createTextNode(tag.name + " (" + tag.count + ")"));
          namediv.onclick = () => {
             ResultsSongTable.SetSongServer(TagServers[tag.name]);
@@ -206,6 +211,7 @@ var makeNav = function(divId) {
 
    PlaylistsLoaded.addCallback(() => ret.NewPlaylists());
 
+   /*
    ret.Add("tags", () => {
       if (ret.tagsVisible) {
          ret.tagItems.forEach(namediv => { namediv.className = "indentedNav navHide" });
@@ -217,6 +223,7 @@ var makeNav = function(divId) {
          Backend.UpdateTags();
       }
    });
+   */
    ret.tags = document.createElement("div");
    ret.tags.className = "tags";
    ret.element.appendChild(ret.tags);
@@ -228,6 +235,7 @@ var makeNav = function(divId) {
             "queue (" + QueueStatus['songs'].length + ")");
 
    ret.NewPlaylists();
-   ret.NewTags();
+   //ret.NewTags();
+   Backend.UpdateTags();
    return ret;
 }

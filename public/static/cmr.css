@@ -235,6 +235,15 @@ main {
    padding-left: 2vmin; /* nav indent */
 }
 
+#nav > div {
+   padding-left: 1vmin;
+}
+
+.navTagIcon {
+   margin-right: .5vmin;
+   font-size: smaller;
+}
+
 .clickable:hover {
    color: #4ddbaf;
 }
