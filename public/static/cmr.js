@@ -114,7 +114,7 @@ TagsUpdated.addCallback(() => {
       var t = TagDb[name];
       if (TagServers[name] === undefined) {
          server = makeSongServer("Tag: " + t.name);
-         server.buttonMask = ['play', 'save'];
+         server.buttonMask = ['add', 'save'];
          TagServers[name] = server;
       } else {
          server = TagServers[name];

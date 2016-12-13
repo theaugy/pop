@@ -305,6 +305,13 @@ main {
    opacity: .91;
 }
 
+.SongList .CurrentlyPlaying {
+}
+
+.SongList .CurrentlyPlaying i.fa-play-circle-o {
+   opacity: .1;
+}
+
 .SongListIcon {
    margin-right: 1vmin;
    font-weight: lighter;

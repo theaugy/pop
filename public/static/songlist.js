@@ -2,6 +2,8 @@
 // selectPlaylist
 // Settings
 // Tags (the library or plugin or whatever they call it)
+// TrackChanged
+// PlayerStatus
 
 var SongListUuidCounter = 0;
 // set up to use an existing table
@@ -117,6 +119,9 @@ function makeSongList(tableId) {
          var post = this.getPostMask();
          post.forEach(b => This.safeAppend(div, buttons[b](tr.song)));
 
+         if (tr.song.path === PlayerStatus.path) {
+            div.className = "CurrentlyPlaying";
+         }
          tr.appendChild(div);
          // not exactly a divider, but hopefully you're looking at rowType instead of
          // the className to figure out what you're looking at.
@@ -168,6 +173,9 @@ function makeSongList(tableId) {
          var post = this.getPostMask();
          post.forEach(b => This.safeAppend(div, buttons[b](tr.song)));
 
+         if (tr.song.path === PlayerStatus.path) {
+            div.className = "CurrentlyPlaying";
+         }
          tr.appendChild(div);
          tr.className += "SongListChild";
          tr.rowType = "child";
@@ -366,5 +374,18 @@ function makeSongList(tableId) {
          return div;
       }
    };
+   TrackChanged.addCallback(() => {
+      console.log("Looking for " + PlayerStatus.path);
+      ret.table.childNodes.forEach(tr => {
+         if (tr.song) {
+            console.log("Considering " + tr.song.path);
+            if (tr.song.path === PlayerStatus.path) {
+               tr.childNodes[0].className = "CurrentlyPlaying";
+            } else {
+               tr.childNodes[0].className = "";
+            }
+         }
+      })
+   });
    return ret;
 }
