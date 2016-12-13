@@ -3,6 +3,12 @@ const ARGS = require('../lib/args.js');
 const J = JSON.stringify;
 var beet = BEET.makeBeet();
 
+const JR = function(res, object) {
+   res.writeHead(200, {'Content-type': 'application/json' });
+   res.write(J(object));
+   res.end();
+}
+
 module.exports = {
    random: function(req, res) {
       var args = ARGS.buildArgs(req);
@@ -37,6 +43,32 @@ module.exports = {
             },
             function(err) { LOG.warn("Problem getting query (" + J(args) + "): " + err); }
             );
+   },
+   tag: function(req, res) {
+      var args = ARGS.buildArgs(req);
+      const tag = args.Get('tag');
+      var paths = args.Get('path');
+      if (!Array.isArray(paths)) {
+         paths = [paths];
+      }
+      JR(res, beet.Tag(tag, paths));
+   },
+   untag: function(req, res) {
+      var args = ARGS.buildArgs(req);
+      const tag = args.Get('tag');
+      var paths = args.Get('path');
+      if (!Array.isArray(paths)) {
+         paths = [paths];
+      }
+      JR(res, beet.Untag(tag, paths));
+   },
+   tagDelete: function(req, res) {
+      var args = ARGS.buildArgs(req);
+      const tag = args.Get('tag');
+      JR(res, beet.TagDelete(tag));
+   },
+   tagStatus: function(req, res) {
+      JR(res, beet.TagStatus());
    }
 }
 

@@ -120,6 +120,7 @@ function cmrsearchInit() {
    // create a queue song server. when the queue is updated, update the
    // songs on the server.
    QueueSongServer = makeSongServer("queue");
+   QueueSongServer.buttonMask = ['play', 'save', 'remove'];
    QueueUpdated.addCallback(() => {
       QueueSongServer.SetSongs(QueueStatus.songs);
    });

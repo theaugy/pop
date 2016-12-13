@@ -7,6 +7,7 @@
 // QueueUpdated
 // Backend
 // QueueSongServer
+// TagsUpdated
 
 function makeAZCombo() {
    var c = document.createElement("div");
@@ -135,6 +136,24 @@ var makeNav = function(divId) {
             div.appendChild(namediv);
          });
       },
+      makeTagDiv: function(tag) {
+         var namediv = document.createElement("div");
+         namediv.className = "indentedNav";
+         namediv.appendChild(document.createTextNode(tag.name + " (" + tag.count + ")"));
+         namediv.onclick = () => {
+            ResultsSongTable.SetSongServer(TagServers[tag.name]);
+         };
+         return namediv;
+      },
+      NewTags: function() {
+         var div = this.tags;
+         clearChildren(div);
+         this.tagItems = [];
+         var This = this;
+         for (t in TagDb) {
+            div.appendChild(this.makeTagDiv(TagDb[t]));
+         }
+      },
       toggleArtistPicker: function() {
          if (this.artistsVisible) { // visible to hidden
             this.artists.style.display = "none";
@@ -153,6 +172,10 @@ var makeNav = function(divId) {
       setPlaylistsVisible: function() {
          this.playlistItems.forEach(namediv => { namediv.className = "indentedNav navShow clickable" });
          this.playlistsVisible = true;
+      },
+      setTagsVisible: function() {
+         this.tagItems.forEach(namediv => { namediv.className = "indentedNav navShow clickable" });
+         this.tagsVisible = true;
       }
    };
 
@@ -178,15 +201,33 @@ var makeNav = function(divId) {
       }
    });
    ret.playlists = document.createElement("div");
-   ret.className = "playlists";
+   ret.playlists.className = "playlists";
    ret.element.appendChild(ret.playlists);
 
    PlaylistsLoaded.addCallback(() => ret.NewPlaylists());
+
+   ret.Add("tags", () => {
+      if (ret.tagsVisible) {
+         ret.tagItems.forEach(namediv => { namediv.className = "indentedNav navHide" });
+         ret.tagsVisible = false;
+      } else {
+         ret.setTagsVisible();
+      }
+      if (TagDb === null) {
+         Backend.UpdateTags();
+      }
+   });
+   ret.tags = document.createElement("div");
+   ret.tags.className = "tags";
+   ret.element.appendChild(ret.tags);
+   TagsUpdated.addCallback(() => ret.NewTags());
+
    // include queue length in the queue button's text
    QueueUpdated.addCallback(() =>
          queueBtn.firstChild.nodeValue =
             "queue (" + QueueStatus['songs'].length + ")");
 
    ret.NewPlaylists();
+   ret.NewTags();
    return ret;
 }

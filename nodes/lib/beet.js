@@ -6,10 +6,102 @@ const SONG = require('../lib/song.js');
 const QUERY = require('../lib/songquery.js');
 const fs = require('fs');
 const readline = require('readline');
+const tagsFile = "/m/meta/tags.json";
 
 const hit = function(period) {
    return Math.floor(Math.random() * period) % period === 0;
 }
+
+const ensureValidTagName = function(name) {
+   if (!name) throw "Invalid tag name (kinda falsy amirite?)";
+   var r = /^[a-zA-Z][a-zA-Z.0-9]+$/;
+   if (!name.match(r))
+      throw "Tag name '" + name + " doesn't match regex " + r + ". Tag names need to be letters and periods only.";
+}
+
+function makeTag(tag) {
+   var ret = {};
+   ret.name = tag;
+   ret.songs = {};
+   retrofitTag(ret);
+   return ret;
+}
+
+function retrofitTag(ret) {
+   ret.AddSong = function(song) {
+      if (ret.songs[song.path] === undefined) {
+         ret.songs[song.path] = song;
+      }
+   };
+   // maybe not needed...
+   ret.GetSongs = function() {
+      var list = [];
+      for (p in ret.songs) {
+         list.push(ret.songs[p]);
+      }
+      return list;
+   };
+   return ret;
+}
+
+var Tags = {};
+
+
+function retrofitTags(tags) {
+   tags.Tag = function(tag, songs) {
+      var t = this[tag];
+      if (t === undefined) {
+         ensureValidTagName(tag);
+         // new tag.
+         LOG.info("New tag: " + tag);
+         t = makeTag(tag);
+         this[tag] = t;
+      }
+      songs.forEach(song => t.AddSong(song));
+   };
+   // returns number of changes
+   tags.Untag = function(tag, songs) {
+      var t = this[tag];
+      if (t === undefined) {
+         LOG.warn("Asked to untag from " + tag + ", but no tag with that name exists.");
+         return 0;
+      }
+      var count = 0;
+      songs.forEach(song => {
+         if (t.songs[song.path] !== undefined) {
+            ++count;
+            delete t.songs[song.path];
+         }
+      });
+      return count;
+   },
+   tags.Delete = function(tag) {
+      var t = this[tag];
+      if (t === undefined) {
+         LOG.warn("Asked to delete non-existent tag " + tag);
+         return 0;
+      }
+      var count = 0;
+      for (s in t.songs) {
+         ++count;
+      }
+      delete this[tag];
+      return count;
+   }
+}
+
+(function () {
+   var r = fs.createReadStream(tagsFile, { encoding: 'utf8' });
+   var d = "";
+   r.on('data', chunk => d += chunk);
+   r.on('end', () => {
+      Tags = JSON.parse(d);
+      for (t in Tags) {
+         retrofitTag(Tags[t]);
+      }
+      retrofitTags(Tags);
+   });
+})();
 
 const BEET_EOC = "CMR_SERVER_REQUEST_END_OF_COMMAND_OUTPUT";
 
@@ -165,6 +257,35 @@ const beetProto = {
       } else {
          this.outputBuffer += line + "\n";
       }
+   },
+   Tag: function(tag, paths) {
+      var songs = SONG.parseSongs(paths);
+      Tags.Tag(tag, songs);
+      LOG.info("Tagged as " + tag + ": " + paths);
+      this.saveTags();
+      return Tags;
+   },
+   Untag: function(tag, paths) {
+      var songs = SONG.parseSongs(paths);
+      var count = Tags.Untag(tag, songs);
+      LOG.info("Untagged " + count + " from " + tag + ": " + paths);
+      if (count > 0) {
+         this.saveTags();
+      }
+      return Tags;
+   },
+   TagStatus: function() {
+      return Tags;
+   },
+   TagDelete: function(tag) {
+      var count = Tags.Delete(tag);
+      LOG.info("Tag " + tag + " no longer exists (had " + count + " tracks)");
+      this.saveTags();
+      return Tags;
+   },
+   saveTags: function() {
+      var file = fs.createWriteStream(tagsFile, { flags: 'w', defaultEncoding: 'utf8' });
+      file.write(JSON.stringify(Tags));
    },
    beetEocCallback: []
 };

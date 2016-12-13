@@ -4,7 +4,7 @@ const LOG = require('../lib/log.js');
 const SONG = require('../lib/song.js');
 const decoder = new (require("string_decoder").StringDecoder);
 const fs = require('fs');
-const queueFile = "../private/queues.json";
+const queueFile = "/m/meta/queues.json";
 
 function makeQueueStatus(name, songList) {
    var ret = {};
@@ -24,6 +24,7 @@ function makePopQ(name) {
 }
 
 function retrofitPopQ(pq) {
+   console.log(pq.name + ": " + pq.songs.length);
    pq.remove = function(paths) {
       if (Array.isArray(paths)) {
          var keep = [];
@@ -54,22 +55,24 @@ function retrofitPopQ(pq) {
    };
 }
 
-function retrofitPopQSet(set) {
-   // TODO: just iterate members?
-   retrofitPopQ(set.stella);
-   retrofitPopQ(set.augy);
-   PopQ = set.augy;
-   console.log("Stella: " + set.stella.songs.length);
-   console.log("Augy: " + set.augy.songs.length);
-}
-
 var PopQSet = {};
 
 (function () {
    var r = fs.createReadStream(queueFile, { encoding: 'utf8' });
    var d = "";
    r.on('data', chunk => d += chunk);
-   r.on('end', () => { PopQSet = JSON.parse(d); retrofitPopQSet(PopQSet); });
+   r.on('end', () => {
+      PopQSet = JSON.parse(d);
+      for (s in PopQSet) {
+         retrofitPopQ(PopQSet[s]);
+         if (s === "augy") { // default queue is "augy"
+            PopQ = PopQSet.augy;
+         }
+      }
+      if (!PopQ) {
+         PopQ = makePopQ("augy");
+      }
+   });
 })();
 
 

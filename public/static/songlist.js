@@ -1,6 +1,7 @@
 // Requires:
 // selectPlaylist
 // Settings
+// Tags (the library or plugin or whatever they call it)
 
 var SongListUuidCounter = 0;
 // set up to use an existing table
@@ -70,13 +71,18 @@ function makeSongList(tableId) {
          mediumDiv.className = "SongListMedium";
          return mediumDiv;
       },
+      safeAppend: function(div, child) {
+         if (child) {
+            div.append(child);
+         }
+      },
       fillAsDivider: function(tr, heavyText, lightText, childRows) {
          var div = document.createElement("div");
          var This = this;
 
          var buttons = this.dividerButtons;
          var mask = this.getButtonMask();
-         mask.forEach(b => div.append(buttons[b](tr.song)));
+         mask.forEach(b => This.safeAppend(div, buttons[b](tr.song)));
 
          var heavyDiv = this.heavyDiv(heavyText);
          heavyDiv.onclick = () => { This.toggleChildVisibility(childRows); };
@@ -89,6 +95,9 @@ function makeSongList(tableId) {
          if (Settings.Get("albumDefaultState") === "collapsed")
             This.toggleChildVisibility(childRows);
 
+         var post = this.getPostMask();
+         post.forEach(b => This.safeAppend(div, buttons[b](tr.song)));
+
          tr.appendChild(div);
          tr.className += "SongListDivider";
          tr.rowType = "divider";
@@ -99,11 +108,14 @@ function makeSongList(tableId) {
 
          var buttons = this.dividerButtons;
          var mask = this.getButtonMask();
-         mask.forEach(b => div.append(buttons[b](tr.song)));
+         mask.forEach(b => This.safeAppend(div, buttons[b](tr.song)));
 
          div.appendChild(this.heavyDiv(heavyText));
          div.appendChild(this.mediumDiv(mediumText));
          div.appendChild(this.lightDiv(lightText));
+
+         var post = this.getPostMask();
+         post.forEach(b => This.safeAppend(div, buttons[b](tr.song)));
 
          tr.appendChild(div);
          // not exactly a divider, but hopefully you're looking at rowType instead of
@@ -118,6 +130,14 @@ function makeSongList(tableId) {
          if (mask === undefined)
             mask = this.defaultButtonMask;
          return mask;
+      },
+      getPostMask: function() {
+         var post;
+         if (this.server)
+            post = this.server.postMask;
+         if (post === undefined)
+            post = this.defaultPostMask;
+         return post;
       },
       fillAsChild: function(tr, opts) {
          var div = document.createElement("div");
@@ -137,13 +157,17 @@ function makeSongList(tableId) {
          var This = this;
          var buttons = this.songButtons;
          var mask = this.getButtonMask();
-         mask.forEach(b => div.appendChild(buttons[b](tr.song)));
+         mask.forEach(b => This.safeAppend(div, buttons[b](tr.song)));
          if (opts.artist)
             div.appendChild(this.heavyDiv(song.artist));
          if (opts.title)
             div.append(this.mediumDiv(song.title));
          if (opts.album)
             div.append(this.lightDiv(song.title));
+
+         var post = this.getPostMask();
+         post.forEach(b => This.safeAppend(div, buttons[b](tr.song)));
+
          tr.appendChild(div);
          tr.className += "SongListChild";
          tr.rowType = "child";
@@ -248,7 +272,8 @@ function makeSongList(tableId) {
    ret.table = document.getElementById(tableId);
    ret.table.className = "SongList";
    ret.currentSongs = [];
-   ret.defaultButtonMask = ['add', 'save'];
+   ret.defaultButtonMask = ['add', 'save' ];
+   ret.defaultPostMask = ['tag'];
 
    ret.songButtons = {
       add: function(song) {
@@ -264,6 +289,29 @@ function makeSongList(tableId) {
       },
       remove: function(song) {
          return ret.makeButton("times", ()=>Backend.DequeueSong(song));
+      },
+      tag: function(song) {
+         var div = document.createElement("div");
+         div.className = "tagEditor";
+         var tags = new Taggle(div, {
+            placeholder: "",
+            tags: TagsForSong(song),
+            onTagAdd: function(evt, name) {
+               console.log("tagging " + song.path + " with " + name);
+               Backend.TagSong(name, song);
+            },
+            onTagRemove: function(evt, name) {
+               console.log("untagging " + song.path + " from " + name);
+               Backend.UntagSong(name, song);
+            }
+         });
+         return div;
+         /*
+         return ret.makeButton("tag", ()=> {
+            var t = window.prompt("Tag name", "");
+            Backend.TagSong(t, song);
+         });
+         */
       }
    };
    ret.dividerButtons = {
@@ -299,6 +347,8 @@ function makeSongList(tableId) {
                var matches = ret.getMatching("album", song["album"], song);
                if (matches.length > 0) Backend.DequeueSongs(matches);
          });
+      },
+      tag: function(song) {
       }
    };
    return ret;

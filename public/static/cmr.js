@@ -50,6 +50,7 @@ Event.prototype.getName = function() {
 // Then we'll have to figure something else out.
 var TrackChanged = new Event("TrackChanged");
 var QueueUpdated = new Event("QueueUpdated");
+var TagsUpdated = new Event("TagsUpdated");
 var NowPaused = new Event("NowPaused");
 var NowPlaying = new Event("NowPlaying");
 var NewPlayerStatus = new Event("NewPlayerStatus");
@@ -102,6 +103,41 @@ function isPlaying() {
 // List of songs currently in the queue and misc. other infos
 var QueueStatus = null;
 
+var TagDb = null;
+
+var TagServers = {};
+
+TagsUpdated.addCallback(() => {
+   // update TagServers
+   for (name in TagDb) {
+      var server;
+      var t = TagDb[name];
+      if (TagServers[name] === undefined) {
+         server = makeSongServer("Tag: " + t.name);
+         server.buttonMask = ['play', 'save'];
+         TagServers[name] = server;
+      } else {
+         server = TagServers[name];
+      }
+      var songs = [];
+      for (s in t.songs) {
+         songs.push(t.songs[s]);
+      }
+      t.count = songs.length;
+      server.SetSongs(songs);
+   }
+});
+
+function TagsForSong(song) {
+   var ret = [];
+   var path = song.path;
+   for (name in TagDb) {
+      if (TagDb[name].songs[path] !== undefined) {
+         ret.push(name);
+      }
+   }
+   return ret;
+}
 
 var Settings = {
    settings: {},
@@ -194,6 +230,11 @@ BackendImpl.prototype.queueStatusReceived = function(response) {
    QueueUpdated.trigger();
 }
 
+BackendImpl.prototype.tagsReceived = function(response) {
+   TagDb = JSON.parse(response);
+   TagsUpdated.trigger();
+}
+
 BackendImpl.prototype.requestAndUpdatePlayerStatus = function(req) {
    var This = this;
    var cb = function(response) {
@@ -206,6 +247,14 @@ BackendImpl.prototype.requestAndUpdateQueueStatus = function(req) {
    var This = this;
    var cb = function(response) {
       This.queueStatusReceived(response);
+   }
+   this.request(req, cb);
+}
+
+BackendImpl.prototype.requestAndUpdateTags = function(req) {
+   var This = this;
+   var cb = function(response) {
+      This.tagsReceived(response);
    }
    this.request(req, cb);
 }
@@ -277,6 +326,10 @@ BackendImpl.prototype.UpdateQueueStatus = function() {
    this.requestAndUpdateQueueStatus("queue");
 }
 
+BackendImpl.prototype.UpdateTags = function() {
+   this.requestAndUpdateTags("tagStatus");
+}
+
 BackendImpl.prototype.FavoriteCurrentSong = function() {
    this.request("fav", function(){}); // elicits no response
 }
@@ -337,6 +390,14 @@ BackendImpl.prototype.QueueJump = function(song) {
 
 BackendImpl.prototype.SelectQueue = function(name) {
    this.requestAndUpdateQueueStatus("selectQueue?" + makeArgs(['name', name]));
+}
+
+BackendImpl.prototype.TagSong = function(tag, song) {
+   this.requestAndUpdateTags("tag?" + makeArgs(['tag', tag, 'path', song.path]));
+}
+
+BackendImpl.prototype.UntagSong = function(tag, song) {
+   this.requestAndUpdateTags("untag?" + makeArgs(['tag', tag, 'path', song.path]));
 }
 
 // I don't remember the format of the response. Probably { songs: [ song1, song2, ... ] }

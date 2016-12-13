@@ -37,7 +37,7 @@ button {
 }
 
 /* this is only the search bar right now */
-input {
+#search > input {
    border: 1px solid #4ddb9f;
    border-radius: 2px;
    background-color: #161616;
@@ -47,6 +47,43 @@ input {
    margin-top: 4vmin;
    margin-bottom: 4vmin;
 }
+
+.tagEditor {
+   display: inline-block;
+}
+
+.tagEditor span {
+   display: inline-block;
+}
+
+.tagEditor ul {
+   list-style-type: none;
+   margin: 0;
+   padding: 0;
+}
+
+.tagEditor li {
+   display: inline;
+   font-size: 1.2vmin;
+}
+
+.tagEditor li input {
+   display: inline;
+   margin: 0;
+   border: none;
+   border-radius: 2px;
+   background-color: #161616;
+   color: #4ddb9f;
+}
+/*
+/*
+
+.tagEditor li {
+   display: inline-block;
+   height: 2.5vmin;
+   width: 10%;
+}
+*/
 
 button:hover {
    color: #4ddbaf;
