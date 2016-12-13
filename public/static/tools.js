@@ -27,8 +27,8 @@ function makeTools() {
 
    ret.Add("Chromecast", "chromecast");
    ret.Add("Desk", "desk");
-   ret.AddNonTool("Augy", () => Backend.SelectQueue("augy"));
-   ret.AddNonTool("Stella", () => Backend.SelectQueue("stella"));
+   ret.AddNonTool("Use augy's q", () => Backend.SelectQueue("augy"));
+   ret.AddNonTool("Use stella's q", () => Backend.SelectQueue("stella"));
    ret.AddNonTool("Prefer Collapsed", () => Settings.Set("albumDefaultState", "collapsed"));
    ret.AddNonTool("Prefer Expanded", () => Settings.Set("albumDefaultState", "expanded"));
    return ret;

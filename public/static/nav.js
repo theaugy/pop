@@ -232,7 +232,7 @@ var makeNav = function(divId) {
    // include queue length in the queue button's text
    QueueUpdated.addCallback(() =>
          queueBtn.firstChild.nodeValue =
-            "queue (" + QueueStatus['songs'].length + ")");
+            QueueStatus.name + "'s queue (" + QueueStatus.songs.length + ")");
 
    ret.NewPlaylists();
    //ret.NewTags();

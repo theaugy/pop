@@ -192,7 +192,7 @@ const cmusProto = {
    popqStatus: function() {
       var This = this;
       return function() {
-         return Promise.resolve(makeQueueStatus("PoP Queue", PopQ.songs));
+         return Promise.resolve(makeQueueStatus(PopQ.name, PopQ.songs));
       };
    },
    QueueStatus: function() {
