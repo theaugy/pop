@@ -106,7 +106,7 @@ function makeSongList(tableId) {
          var div = document.createElement("div");
          var This = this;
 
-         var buttons = this.dividerButtons;
+         var buttons = this.songButtons;
          var mask = this.getButtonMask();
          mask.forEach(b => This.safeAppend(div, buttons[b](tr.song)));
 
@@ -249,7 +249,6 @@ function makeSongList(tableId) {
       ClearSongServer: function() {
          if (this.server !== null) {
             this.server.Updated.removeCallback(this.uuid);
-            console.log("setting server to null");
             this.server = null;
          }
       },
@@ -297,21 +296,14 @@ function makeSongList(tableId) {
             placeholder: "",
             tags: TagsForSong(song),
             onTagAdd: function(evt, name) {
-               console.log("tagging " + song.path + " with " + name);
                Backend.TagSong(name, song);
             },
             onTagRemove: function(evt, name) {
-               console.log("untagging " + song.path + " from " + name);
                Backend.UntagSong(name, song);
             }
          });
+         song.tagger = tags;
          return div;
-         /*
-         return ret.makeButton("tag", ()=> {
-            var t = window.prompt("Tag name", "");
-            Backend.TagSong(t, song);
-         });
-         */
       }
    };
    ret.dividerButtons = {
@@ -349,6 +341,29 @@ function makeSongList(tableId) {
          });
       },
       tag: function(song) {
+         var div = document.createElement("div");
+         div.className = "tagEditor";
+         var tags = new Taggle(div, {
+            placeholder: "",
+            tags: [], // nothing by default
+            onTagAdd: function(evt, name) {
+               var matches = ret.getMatching("album", song.album, song);
+               if (matches.length > 0) {
+                  Backend.TagSongs(name, matches, () => {
+                     matches.forEach(m => { m.tagger.removeAll(); m.tagger.add(TagsForSong(m)); });
+                  });
+               }
+            },
+            onTagRemove: function(evt, name) {
+               var matches = ret.getMatching("album", song.album, song);
+               if (matches.length > 0) {
+                  Backend.UntagSongs(name, matches, () => {
+                     matches.forEach(m => { m.tagger.removeAll(); m.tagger.add(TagsForSong(m)); });
+                  });
+               }
+            }
+         });
+         return div;
       }
    };
    return ret;

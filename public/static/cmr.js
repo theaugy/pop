@@ -251,10 +251,13 @@ BackendImpl.prototype.requestAndUpdateQueueStatus = function(req) {
    this.request(req, cb);
 }
 
-BackendImpl.prototype.requestAndUpdateTags = function(req) {
+BackendImpl.prototype.requestAndUpdateTags = function(req, clientCb) {
    var This = this;
    var cb = function(response) {
       This.tagsReceived(response);
+      if (clientCb) {
+         clientCb();
+      }
    }
    this.request(req, cb);
 }
@@ -396,8 +399,20 @@ BackendImpl.prototype.TagSong = function(tag, song) {
    this.requestAndUpdateTags("tag?" + makeArgs(['tag', tag, 'path', song.path]));
 }
 
+BackendImpl.prototype.TagSongs = function(tag, songs, cb) {
+   var args = ['tag', tag];
+   songs.forEach((s) => { args.push("path"); args.push(s.path); });
+   this.requestAndUpdateTags("tag?" + makeArgs(args), cb);
+}
+
 BackendImpl.prototype.UntagSong = function(tag, song) {
    this.requestAndUpdateTags("untag?" + makeArgs(['tag', tag, 'path', song.path]));
+}
+
+BackendImpl.prototype.UntagSongs = function(tag, songs, cb) {
+   var args = ['tag', tag];
+   songs.forEach((s) => { args.push("path"); args.push(s.path); });
+   this.requestAndUpdateTags("untag?" + makeArgs(args), cb);
 }
 
 // I don't remember the format of the response. Probably { songs: [ song1, song2, ... ] }
