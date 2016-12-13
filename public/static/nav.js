@@ -155,9 +155,12 @@ var makeNav = function(divId) {
          clearChildren(div);
          this.tagItems = [];
          var This = this;
+         var alphad = [];
          for (t in TagDb) {
-            div.appendChild(this.makeTagDiv(TagDb[t]));
+            alphad.push(t);
          }
+         alphad.sort();
+         alphad.forEach(t => div.appendChild(this.makeTagDiv(TagDb[t])));
       },
       toggleArtistPicker: function() {
          if (this.artistsVisible) { // visible to hidden
