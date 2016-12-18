@@ -4,6 +4,7 @@
 // Tags (the library or plugin or whatever they call it)
 // TrackChanged
 // PlayerStatus
+// Backend.SetCmusPlaylist()
 
 var SongListUuidCounter = 0;
 // set up to use an existing table
@@ -201,6 +202,7 @@ function makeSongList(tableId) {
          var lastAlbum = "INIT_LAST_ALBUM";
          this.currentSongs = songs;
          var thisSection = [];
+         var songIndex = 0;
          var commitSection = function() {
             if (thisSection.length === 0) return;
 
@@ -220,10 +222,11 @@ function makeSongList(tableId) {
                var childRows = [];
                thisSection.forEach(song => {
                   var tr = This.makeSongRow(song);
+                  tr.song.index = songIndex++;
                   if (isVA) {
                      This.fillAsChild(tr, { isVa: true });
                   } else {
-                     This.fillAsChild(tr, {});
+                     This.fillAsChild(tr, { });
                   }
                   childRows.push(tr);
                });
@@ -238,6 +241,7 @@ function makeSongList(tableId) {
                // make a single row
                var song = thisSection[0];
                var tr = This.makeSongRow(song);
+               tr.song.index = songIndex++;
                This.fillAsSingle(tr, song.artist, song.title, song.album);
                This.addTR(tr);
             }
@@ -253,6 +257,7 @@ function makeSongList(tableId) {
             thisSection.push(song);
          });
          commitSection();
+         Backend.SetCmusPlaylist(songs);
       },
       ClearSongServer: function() {
          if (this.server !== null) {
@@ -279,7 +284,7 @@ function makeSongList(tableId) {
    ret.table = document.getElementById(tableId);
    ret.table.className = "SongList";
    ret.currentSongs = [];
-   ret.defaultButtonMask = ['add', 'save' ];
+   ret.defaultButtonMask = ['play', 'add', 'save' ];
    ret.defaultPostMask = ['tag'];
 
    ret.songButtons = {
@@ -292,7 +297,7 @@ function makeSongList(tableId) {
                });
       },
       play: function(song) {
-         return ret.makeButton("play-circle-o", ()=> Backend.QueueJump(song));
+         return ret.makeButton("play-circle-o", ()=> Backend.SetCmusPlaylistPos(song.index));
       },
       remove: function(song) {
          return ret.makeButton("times", ()=>Backend.DequeueSong(song));
@@ -312,6 +317,9 @@ function makeSongList(tableId) {
          });
          song.tagger = tags;
          return div;
+      },
+      upnext: function(song) {
+         return ret.makeButton("sort-asc", () => { });
       }
    };
    ret.dividerButtons = {
@@ -327,7 +335,7 @@ function makeSongList(tableId) {
                () => {
                   var matches = ret.getMatching("album", song["album"], song);
                   if (matches.length > 0) {
-                     Backend.QueueJump(matches[0]);
+                     Backend.SetCmusPlaylistPos(matches[0].index);
                   }
                });
       },
@@ -372,13 +380,14 @@ function makeSongList(tableId) {
             }
          });
          return div;
+      },
+      upnext: function(song) {
+         return ret.makeButton("sort-asc", () => { });
       }
    };
    TrackChanged.addCallback(() => {
-      console.log("Looking for " + PlayerStatus.path);
       ret.table.childNodes.forEach(tr => {
          if (tr.song) {
-            console.log("Considering " + tr.song.path);
             if (tr.song.path === PlayerStatus.path) {
                tr.childNodes[0].className = "CurrentlyPlaying";
             } else {

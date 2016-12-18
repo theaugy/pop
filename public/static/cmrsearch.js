@@ -111,7 +111,14 @@ function cmrsearchInit() {
 
    Nav = makeNav("nav");
 
-   TrackChanged.addCallback(() => Backend.UpdateQueueStatus());
+   // UpdateQueueStatus causes us to re-set the cmus/"main" playlist, which
+   // in turn screws up the song position.
+   // The original idea here was that since a track change meant consuming
+   // a queue song, you had to refresh the queue status if you noticed that
+   // the track changed. But since we no longer consume tracks in the
+   // main playlist/queue, we don't have to do this. We definitely need to
+   // clarify terminology and behavior of playlist vs. main playlist vs. queue.
+   //TrackChanged.addCallback(() => Backend.UpdateQueueStatus());
 
    if (!window.location.hash) {
       window.location.hash = "#player";

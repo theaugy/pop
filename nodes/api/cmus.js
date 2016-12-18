@@ -55,6 +55,18 @@ module.exports = {
    selectQueue: function(req, res) {
       var args = ARGS.buildArgs(req, res);
       cmus.SelectQueue(args.Get("name")).then(j => R(j, res, req));
+   },
+   setMain: function(req, res) {
+      var args = ARGS.buildArgs(req, res);
+      cmus.SetMainPlaylist(args.Get('path')).then(() => {
+            res.writeHead(200, {'Content-type': 'text/plain' });
+            res.write("OK");
+            res.end()
+      });
+   },
+   setMainPos: function(req, res) {
+      var args = ARGS.buildArgs(req, res);
+      cmus.SetMainPlaylistPos(args.Get('pos')).then(j => R(j, res, req));
    }
 }
 

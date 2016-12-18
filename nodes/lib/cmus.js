@@ -24,7 +24,6 @@ function makePopQ(name) {
 }
 
 function retrofitPopQ(pq) {
-   console.log(pq.name + ": " + pq.songs.length);
    pq.remove = function(paths) {
       if (Array.isArray(paths)) {
          var keep = [];
@@ -52,6 +51,15 @@ function retrofitPopQ(pq) {
       } else {
          This.songs.push(SONG.parseSong(paths));
       }
+   };
+   pq.writeToPlaylist = function() {
+      var This = this;
+      var path = "/tmp/" + This.name + ".m3u";
+      var file = fs.createWriteStream(path, { flags: 'w', defaultEncoding: 'utf8' });
+      This.songs.forEach(s => file.write(s.path + "\n"));
+      file.end();
+      return new Promise(function(res) { file.on('finish', () => res(path)); });
+
    };
 }
 
@@ -180,6 +188,48 @@ const cmusProto = {
             }
          } while (!goodRun);
          return Promise.resolve(makeQueueStatus("Cmus Queue", This.pathsToSongs(paths)));
+      };
+   },
+   // NOTE: We don't have a good way of getting the cmus playlist status, short of issuing
+   // a 'save' command and cat'ing ~/.cmus/playlists/default. In theory though, this won't
+   // be necessary: the ui defines what goes in the playlist, and as long as nobody else
+   // messes with it, it will be as the ui last left it.
+   SetMainPlaylist: function(paths) {
+      var tmpPopq = makePopQ("CmusMainPlaylist");
+      tmpPopq.append(paths);
+      return this.cmusLoadPlaylist(tmpPopq)();
+   },
+   SetMainPlaylistPos: function(pos) {
+      var This = this;
+      return this.cmusGotoPlaylistPosition(pos)().then(This.playerStatus());
+   },
+   cmusLoadPlaylist: function(popq) {
+      var This = this;
+      return function() {
+         // write the passed popq to a playlist, then replace the cmus playlist with that.
+         return popq.writeToPlaylist().then(
+               (plpath) => {
+                  // expect that the playlist list is focused. this is janky af.
+                  This.C(['-C', 'win-next'])
+                  This.C(['-C', 'view playlist', 'clear']);
+                  This.C(['-c', plpath])
+               });
+      };
+   },
+   // pos is zero-indexed playlist position.
+   cmusGotoPlaylistPosition: function(pos) {
+      var This = this;
+      return function() {
+         // also expect the playlist list is focused.
+         var cmds = ["-C", 'view playlist', 'win-next', "win-top" ];
+         for (var i = 0; i < pos; ++i) {
+            cmds.push("win-down");
+         }
+         cmds.push('win-activate');
+         // then go back to playlist list
+         cmds.push('win-next');
+         This.C(cmds);
+         return Promise.resolve(true);
       };
    },
    // queueStatus() will from now on be assumed to refer to the popq status, which is a queue

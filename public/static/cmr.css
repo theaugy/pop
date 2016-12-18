@@ -47,44 +47,6 @@ button {
    margin-top: 4vmin;
    margin-bottom: 4vmin;
 }
-
-.tagEditor {
-   display: inline-block;
-}
-
-.tagEditor span {
-   display: inline-block;
-}
-
-.tagEditor ul {
-   list-style-type: none;
-   margin: 0;
-   padding: 0;
-}
-
-.tagEditor li {
-   display: inline;
-   font-size: 1.2vmin;
-}
-
-.tagEditor li input {
-   display: inline;
-   margin: 0;
-   border: none;
-   border-radius: 2px;
-   background-color: #161616;
-   color: #4ddb9f;
-}
-/*
-/*
-
-.tagEditor li {
-   display: inline-block;
-   height: 2.5vmin;
-   width: 10%;
-}
-*/
-
 button:hover {
    color: #4ddbaf;
 }
@@ -273,7 +235,6 @@ main {
 }
 
 .SongListSingle > div {
-   font-weight: 700;
    margin: 0px;
    margin-bottom: .2vmin;
    margin-top: 2vmin;
@@ -309,13 +270,18 @@ main {
 }
 
 .SongList .CurrentlyPlaying i.fa-play-circle-o {
-   opacity: .1;
+   opacity: 1;
 }
 
-.SongListIcon {
+.SongListIcon i {
    margin-right: 1vmin;
    font-weight: lighter;
    color: #4ddbaf;
+   opacity: .16;
+}
+
+.SongListIcon i:hover {
+   opacity: 1;
 }
 
 .hrule {
@@ -335,3 +301,42 @@ main {
 .tools div:hover {
    opacity: 1;
 }
+
+.tagEditor {
+   display: inline-block;
+}
+
+.tagEditor span {
+   display: inline-block;
+}
+
+.tagEditor ul {
+   list-style-type: none;
+   margin: 0;
+   padding: 0;
+}
+
+.tagEditor li {
+   display: inline;
+   font-size: 1.2vmin;
+   font-weight: lighter;
+}
+
+.tagEditor li input {
+   display: inline;
+   margin: 0;
+   border: none;
+   border-radius: 2px;
+   background-color: #161616;
+   color: #4ddb9f;
+}
+/*
+/*
+
+.tagEditor li {
+   display: inline-block;
+   height: 2.5vmin;
+   width: 10%;
+}
+*/
+

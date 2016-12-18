@@ -114,7 +114,7 @@ TagsUpdated.addCallback(() => {
       var t = TagDb[name];
       if (TagServers[name] === undefined) {
          server = makeSongServer("Tag: " + t.name);
-         server.buttonMask = ['add', 'save'];
+         server.buttonMask = ['play', 'save', 'add' ];
          TagServers[name] = server;
       } else {
          server = TagServers[name];
@@ -450,6 +450,16 @@ BackendImpl.prototype.GetRandomSongs = function(number, callback) {
 
 BackendImpl.prototype.GetPlaylistSongs = function(playlist, callback) {
    this.request("getPlaylist?" + makeArgs(["name", playlist]), callback);
+}
+
+BackendImpl.prototype.SetCmusPlaylist = function(songs) {
+   var args = [];
+   songs.forEach(s => { args.push('path'); args.push(s.path); });
+   this.request("setMain?" + makeArgs(args));
+}
+
+BackendImpl.prototype.SetCmusPlaylistPos = function(pos) {
+   this.requestAndUpdatePlayerStatus("setMainPos?" + makeArgs(['pos', pos]));
 }
 
 var Backend = new BackendImpl();
