@@ -182,6 +182,10 @@ main {
    margin-left: 27vmin;
 }
 
+#views > *::-webkit-scrollbar {
+   display: none;
+}
+
 #settings {
    font-size: smaller;
    display: block;
