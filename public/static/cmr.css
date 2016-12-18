@@ -36,6 +36,11 @@ button {
    font-size: inherit;
 }
 
+#search {
+   margin-top: 20vmin;
+   position:absolute;
+}
+
 /* this is only the search bar right now */
 #search > input {
    border: 1px solid #4ddb9f;
@@ -150,7 +155,11 @@ div#player td {
 */
 
 div#player {
-   background: transparent;
+   background-color: #161616;
+   position: fixed;
+   width: 100%;
+   height: 19vmin;
+   top: 0;
 }
 
 main {
