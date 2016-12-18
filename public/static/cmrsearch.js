@@ -108,6 +108,7 @@ function cmrsearchInit() {
    document.getElementById("settings").appendChild(tools.element);
    Transport = makeTransport();
    document.getElementById("transport").appendChild(Transport.element);
+   Transport.songClick.addCallback(() => ResultsSongTable.ScrollToPlaying());
 
    Nav = makeNav("nav");
 

@@ -276,6 +276,12 @@ function makeSongList(tableId) {
       },
       SetCookieStore: function() {
          // TODO
+      },
+      ScrollToPlaying: function() {
+         var el = this.table.querySelector(".CurrentlyPlaying");
+         if (el) {
+            el.scrollIntoView(true);
+         }
       }
    };
 

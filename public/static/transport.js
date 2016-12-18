@@ -84,6 +84,7 @@ function makeTransport() {
       d.appendChild(document.createTextNode(""));
       d.className = cn + " " + "songText";
       ret[cn] = d.firstChild;
+      d.onclick = () => { ret.songClick.trigger(); };
       return d;
    }
 
@@ -102,6 +103,8 @@ function makeTransport() {
    a(songText("artist"));
    a(songText("title"));
    a(songText("album"));
+
+   ret.songClick = new Event("CurrentlyPlayingSongClicked");
 
    NowPlaying.addCallback(() => ret.SetPlaying());
    NowPaused.addCallback(() => ret.SetPaused());
