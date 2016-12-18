@@ -394,7 +394,7 @@ function makeSongList(tableId) {
    TrackChanged.addCallback(() => {
       ret.table.childNodes.forEach(tr => {
          if (tr.song) {
-            if (tr.song.path === PlayerStatus.path) {
+            if (tr.song.path === PlayerStatus.path && tr.rowType !== "divider") {
                tr.childNodes[0].className = "CurrentlyPlaying";
             } else {
                tr.childNodes[0].className = "";
