@@ -194,9 +194,14 @@ function makeSongList(tableId) {
          // This is called by clients who just want to put up a static list of
          // songs.
          this.ClearSongServer();
-         this.setSongs(songs);
+         this.setSongs(songs, false);
       },
-      setSongs: function(songs) {
+      InitSongs: function(songs) {
+         if (!this.currentSongs || this.currentSongs.length === 0) {
+            this.setSongs(songs, true);
+         }
+      },
+      setSongs: function(songs, isInit) {
          this.Clear();
          var This = this;
          var lastAlbum = "INIT_LAST_ALBUM";
@@ -257,7 +262,9 @@ function makeSongList(tableId) {
             thisSection.push(song);
          });
          commitSection();
-         Backend.SetCmusPlaylist(songs);
+         if (!isInit) {
+            Backend.SetCmusPlaylist(songs);
+         }
       },
       ClearSongServer: function() {
          if (this.server !== null) {

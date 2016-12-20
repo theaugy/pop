@@ -67,6 +67,9 @@ module.exports = {
    setMainPos: function(req, res) {
       var args = ARGS.buildArgs(req, res);
       cmus.SetMainPlaylistPos(args.Get('pos')).then(j => R(j, res, req));
+   },
+   getMain: function(req, res) {
+      cmus.GetMainPlaylist().then(j => R(j, res, req));
    }
 }
 

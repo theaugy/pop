@@ -203,6 +203,27 @@ const cmusProto = {
       var This = this;
       return this.cmusGotoPlaylistPosition(pos)().then(This.playerStatus());
    },
+   getMainPlaylist: function() {
+      var This = this;
+      return function() {
+         This.C(['-C', 'save']); // have cmus dump its state
+         var r = fs.createReadStream('/home/pi/.cmus/playlists/default', { encoding: 'utf8' });
+         var d = "";
+         var mainPlaylist = { name: "CmusMainPlaylist", songs: [] };
+         var ret = new Promise(function(resolve) {
+            r.on('data', chunk => d += chunk);
+            r.on('end', () => {
+               var paths = d.split("\n");
+               mainPlaylist.songs = SONG.parseSongs(paths);
+               resolve(mainPlaylist);
+            });
+         });
+         return ret;
+      };
+   },
+   GetMainPlaylist: function(paths) {
+      return this.getMainPlaylist()();
+   },
    cmusLoadPlaylist: function(popq) {
       var This = this;
       return function() {
@@ -268,7 +289,7 @@ const cmusProto = {
       var This = this;
       return this.S(function() {
          PopQ.append(path);
-         return This.savePopQ()().then(This.enqueue(path)).then(This.queueStatus());
+         return This.savePopQ()().then(This.queueStatus());
       });
    },
    // puts paths in a temporary m3u, then pushes the path of that temporary
@@ -365,6 +386,10 @@ const cmusProto = {
       return this.S(this.topQueue(path));
    },
    queueJump: function(path) {
+      LOG.info("No longer supporting queue jump. Using SetMainPlaylistPos() (perhaps setMainPos?pos=N) instead.");
+      return function() {
+         return This.playerStatus()();
+      };
       var This = this;
       var toQ = [];
       return function() {

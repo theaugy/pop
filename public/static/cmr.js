@@ -36,9 +36,9 @@ Event.prototype.removeCallback = function(uuid) {
    this.callbacks = tmp;
 }
 
-Event.prototype.trigger = function() {
+Event.prototype.trigger = function(arg) {
    for (var i = 0; i < this.callbacks.length; ++i) {
-      this.callbacks[i].cb(this.cbData);
+      this.callbacks[i].cb(arg);
    }
 }
 
@@ -57,6 +57,7 @@ var NewPlayerStatus = new Event("NewPlayerStatus");
 var NextView = new Event("NextView");
 var PreviousView = new Event("PreviousView");
 var PlaylistsLoaded = new Event("PlaylistsLoaded");
+var CmusPlaylistRecieved = new Event("CmusPlaylistRecieved");
 
 // This holds the current player status. It's a big object containing
 // stuff like the current track, whether we're playing or paused, the
@@ -235,6 +236,11 @@ BackendImpl.prototype.tagsReceived = function(response) {
    TagsUpdated.trigger();
 }
 
+BackendImpl.prototype.cmusPlaylistReceived = function(response) {
+   var cmuspl = JSON.parse(response);
+   CmusPlaylistRecieved.trigger(cmuspl);
+}
+
 BackendImpl.prototype.requestAndUpdatePlayerStatus = function(req) {
    var This = this;
    var cb = function(response) {
@@ -259,6 +265,14 @@ BackendImpl.prototype.requestAndUpdateTags = function(req, clientCb) {
          clientCb();
       }
    }
+   this.request(req, cb);
+}
+
+BackendImpl.prototype.requestAndInitCmusPlaylist = function(req) {
+   var This = this;
+   var cb = function(response) {
+      This.cmusPlaylistReceived(response);
+   };
    this.request(req, cb);
 }
 
@@ -460,6 +474,11 @@ BackendImpl.prototype.SetCmusPlaylist = function(songs) {
 
 BackendImpl.prototype.SetCmusPlaylistPos = function(pos) {
    this.requestAndUpdatePlayerStatus("setMainPos?" + makeArgs(['pos', pos]));
+}
+
+// NOTE: this should only be called once on page startup. probably.
+BackendImpl.prototype.GetCmusPlaylist = function() {
+   this.requestAndInitCmusPlaylist("getMain");
 }
 
 var Backend = new BackendImpl();

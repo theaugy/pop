@@ -104,6 +104,12 @@ function cmrsearchInit() {
       }
    });
 
+   CmusPlaylistRecieved.addCallback(function(cmusPlaylist) {
+      ResultsSongTable.InitSongs(cmusPlaylist.songs);
+   });
+
+   Backend.GetCmusPlaylist(); // initialize the playlist
+
    var tools = makeTools();
    document.getElementById("settings").appendChild(tools.element);
    Transport = makeTransport();
