@@ -37,8 +37,9 @@ Event.prototype.removeCallback = function(uuid) {
 }
 
 Event.prototype.trigger = function(arg) {
-   for (var i = 0; i < this.callbacks.length; ++i) {
-      this.callbacks[i].cb(arg);
+   var cbs = this.callbacks.slice(); // makes a copy of the callback list
+   for (var i = 0; i < cbs.length; ++i) {
+      cbs[i].cb(arg);
    }
 }
 
@@ -132,6 +133,7 @@ TagsUpdated.addCallback(() => {
 function TagsForSong(song) {
    var ret = [];
    var path = song.path;
+   console.log("Tags for path '" + path + "'");
    for (name in TagDb) {
       if (TagDb[name].songs[path] !== undefined) {
          ret.push(name);

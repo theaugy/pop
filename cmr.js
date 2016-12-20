@@ -8,9 +8,13 @@ function tidyUrl(req) {
    return req.url.substring(0, 32);
 }
 
+var RequestsInFlight = 0;
+
 function handleRequest(req, resp) {
    try {
-      LOG.info("--- Request: " + tidyUrl(req));
+      LOG.info("--- Request (" + RequestsInFlight + "): " + tidyUrl(req));
+      ++RequestsInFlight;
+      resp.on('finish', () => { --RequestsInFlight; });
       dispatcher.dispatch(req, resp);
    } catch (err) {
       LOG.error("--- Error serving request " + tidyUrl(req) + ": " + err.stack);

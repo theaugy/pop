@@ -104,11 +104,23 @@ function cmrsearchInit() {
       }
    });
 
-   CmusPlaylistRecieved.addCallback(function(cmusPlaylist) {
-      ResultsSongTable.InitSongs(cmusPlaylist.songs);
-   });
+   var initcbuuid = "InitializeCmusPlaylist";
+   // we depend on nav.js to request a tags update. We could probably get away
+   // with requesting one ourselves, but that would add overhead, so we'll
+   // accept the coupling instead.
+   TagsUpdated.addCallback(function() {
+      TagsUpdated.removeCallback(initcbuuid);
 
-   Backend.GetCmusPlaylist(); // initialize the playlist
+      CmusPlaylistRecieved.addCallback(function(cmusPlaylist) {
+         // we only want to initialize the playlist once
+         CmusPlaylistRecieved.removeCallback(initcbuuid);
+         ResultsSongTable.InitSongs(cmusPlaylist.songs);
+      },
+      initcbuuid);
+      Backend.GetCmusPlaylist(); // initialize the playlist
+   },
+   initcbuuid);
+
 
    var tools = makeTools();
    document.getElementById("settings").appendChild(tools.element);
