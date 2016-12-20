@@ -5,6 +5,8 @@ const SONG = require('../lib/song.js');
 const decoder = new (require("string_decoder").StringDecoder);
 const fs = require('fs');
 const queueFile = "/m/meta/queues.json";
+const BEET = require('../lib/beet.js').makeBeet();
+const QUERY = require('../lib/songquery.js');
 
 function makeQueueStatus(name, songList) {
    var ret = {};
@@ -15,15 +17,21 @@ function makeQueueStatus(name, songList) {
    return ret;
 }
 
-function makePopQ(name) {
+function makePlaylist(name) {
+   if (name.match(/\.\./) !== null) {
+      throw "Playlist name cannot contain dot-dot: " + name;
+   }
+   if (name.match(/\//) !== null) {
+      throw "Playlist name cannot contain slash: " + name;
+   }
    var ret = {};
    ret.songs = [];
    ret.name = name;
-   retrofitPopQ(ret);
+   retrofitPlaylist(ret);
    return ret;
 }
 
-function retrofitPopQ(pq) {
+function retrofitPlaylist(pq) {
    pq.remove = function(paths) {
       if (Array.isArray(paths)) {
          var keep = [];
@@ -46,13 +54,19 @@ function retrofitPopQ(pq) {
    };
    pq.append = function(paths) {
       var This = this;
+      var i = This.songs.length;
       if (Array.isArray(paths)) {
          paths.forEach(p => This.songs.push(SONG.parseSong(p)));
       } else {
          This.songs.push(SONG.parseSong(paths));
       }
+      // update tags when a song is added
+      while (i < This.songs.length) {
+         BEET.RefreshSongTags([This.songs[i]]);
+         ++i;
+      }
    };
-   pq.writeToPlaylist = function() {
+   pq.writeToTempM3u = function() {
       var This = this;
       var path = "/tmp/" + This.name + ".m3u";
       var file = fs.createWriteStream(path, { flags: 'w', defaultEncoding: 'utf8' });
@@ -61,30 +75,31 @@ function retrofitPopQ(pq) {
       return new Promise(function(res) { file.on('finish', () => res(path)); });
 
    };
+   pq.getFilePath = function() {
+      return '/m/meta/playlists/' + this.name + ".json";
+   };
 }
 
-var PopQSet = {};
+var PlaylistSet = {};
 
 (function () {
-   var r = fs.createReadStream(queueFile, { encoding: 'utf8' });
-   var d = "";
-   r.on('data', chunk => d += chunk);
-   r.on('end', () => {
-      PopQSet = JSON.parse(d);
-      for (s in PopQSet) {
-         retrofitPopQ(PopQSet[s]);
-         if (s === "augy") { // default queue is "augy"
-            PopQ = PopQSet.augy;
+   var output = spawn("/usr/bin/find", ['/m/meta/playlists', '-name', '*.json']);
+   var paths = output.stdout.toString().split("\n");
+   paths.forEach((p) => {
+      if (!p) return;
+      var r = fs.createReadStream(p, { encoding: 'utf8' });
+      var d = "";
+      r.on('data', chunk => d += chunk);
+      r.on('end', () => {
+         var pl = JSON.parse(d);
+         retrofitPlaylist(pl);
+         PlaylistSet[pl.name] = pl;
+         if (pl.name === "CmusMainPlaylist") {
+            SONG.cacheSongs(pl.songs);
          }
-      }
-      if (!PopQ) {
-         PopQ = makePopQ("augy");
-      }
+      });
    });
 })();
-
-
-var PopQ;
 
 function makePlayerStatus(args)
 {
@@ -167,8 +182,6 @@ const makeCmusRemote = function() {
 // The uppercase version calls S() to sync. Only one of these is
 // allowed per request. The function passed to S() should create a promise.
 // As long as we never call an uppercase function, the system works.
-//
-// Changes to PopQ should be done only by entry-level functions (i.e., capital first letter)
 const cmusProto = {
    cmusQueueStatus: function() {
       var This = this;
@@ -195,13 +208,13 @@ const cmusProto = {
    // be necessary: the ui defines what goes in the playlist, and as long as nobody else
    // messes with it, it will be as the ui last left it.
    SetMainPlaylist: function(paths) {
-      var tmpPopq = makePopQ("CmusMainPlaylist");
-      tmpPopq.append(paths);
-      return this.cmusLoadPlaylist(tmpPopq)();
+      var tmpPlaylist = makePlaylist("CmusMainPlaylist");
+      tmpPlaylist.append(paths);
+      return this.savePlaylist(tmpPlaylist)().then(this.cmusLoadPlaylist(tmpPlaylist));
    },
    SetMainPlaylistPos: function(pos) {
       var This = this;
-      return this.cmusGotoPlaylistPosition(pos)().then(This.playerStatus());
+      return this.cmusGotoPlaylistPositionAnd(pos, ['win-activate'])().then(This.playerStatus());
    },
    getMainPlaylist: function() {
       var This = this;
@@ -215,6 +228,7 @@ const cmusProto = {
             r.on('end', () => {
                var paths = d.split("\n");
                mainPlaylist.songs = SONG.parseSongs(paths);
+               BEET.RefreshSongTags(mainPlaylist.songs);
                resolve(mainPlaylist);
             });
          });
@@ -224,11 +238,11 @@ const cmusProto = {
    GetMainPlaylist: function(paths) {
       return this.getMainPlaylist()();
    },
-   cmusLoadPlaylist: function(popq) {
+   cmusLoadPlaylist: function(playlist) {
       var This = this;
       return function() {
-         // write the passed popq to a playlist, then replace the cmus playlist with that.
-         return popq.writeToPlaylist().then(
+         // write the passed playlist to a temp m3u, then replace the cmus playlist with that.
+         return playlist.writeToTempM3u().then(
                (plpath) => {
                   // expect that the playlist list is focused. this is janky af.
                   This.C(['-C', 'win-next'])
@@ -238,7 +252,7 @@ const cmusProto = {
       };
    },
    // pos is zero-indexed playlist position.
-   cmusGotoPlaylistPosition: function(pos) {
+   cmusGotoPlaylistPositionAnd: function(pos, andThen) {
       var This = this;
       return function() {
          // also expect the playlist list is focused.
@@ -246,28 +260,32 @@ const cmusProto = {
          for (var i = 0; i < pos; ++i) {
             cmds.push("win-down");
          }
-         cmds.push('win-activate');
+
+         // perform whatever operation is requested at this location
+         andThen.forEach(c => cmds.push(c));
+
          // then go back to playlist list
          cmds.push('win-next');
          This.C(cmds);
          return Promise.resolve(true);
       };
    },
-   // queueStatus() will from now on be assumed to refer to the popq status, which is a queue
-   // that does not get 'consumed' as tracks are played. the cmus queue is the actual queue
-   // in cmus. The illusion of a non-consumed queue is provided by manipulating the cmus
-   // queue.
-   queueStatus: function() {
-      return this.popqStatus();
-   },
-   popqStatus: function() {
+   playlistStatus: function(playlist) {
       var This = this;
       return function() {
-         return Promise.resolve(makeQueueStatus(PopQ.name, PopQ.songs));
+         return Promise.resolve(QUERY.makeQueryResult(playlist.name, playlist.songs));
       };
    },
    QueueStatus: function() {
       return this.S(this.queueStatus());
+   },
+   PlaylistStatus: function(args) {
+      var pl = this.getPlaylist(args);
+      return this.playlistStatus(pl)().then(s => {
+         BEET.RefreshSongTags(pl.songs);
+         SONG.cacheSongs(pl.songs);
+         return s;
+      });
    },
    playerStatus: function() {
       var This = this;
@@ -284,12 +302,13 @@ const cmusProto = {
    pathsToSongs: function(paths) {
       return SONG.parseSongs(paths);
    },
-   Enqueue: function(path) {
-      LOG.info("Enqueueing " + path + " to " + PopQ.name);
+   Enqueue: function(args) {
+      var playlist = this.getPlaylist(args);
+      LOG.info("Enqueueing " + args.path + " to " + args.playlist);
       var This = this;
       return this.S(function() {
-         PopQ.append(path);
-         return This.savePopQ()().then(This.queueStatus());
+         playlist.append(path);
+         return This.savePlaylist(playlist)().then(This.playlistStatus(playlist));
       });
    },
    // puts paths in a temporary m3u, then pushes the path of that temporary
@@ -350,16 +369,34 @@ const cmusProto = {
             .then(This.enqueue(pathsToKeep));
       };
    },
-   Dequeue: function(path) {
-      LOG.info("Dequeueing " + path + " from " + PopQ.name);
+   getPlaylist: function(args) {
+      var playlist = PlaylistSet[args.playlist];
+      if (!playlist) {
+         playlist = PlaylistSet[args.name];
+      }
+      if (!playlist) {
+         LOG.warn("no playlist named " + args.playlist + " or " + args.name);
+         throw "no playlist named " + args.playlist + " or " + args.name;
+      }
+      return playlist;
+   },
+   Dequeue: function(args) {
+      var playlist = this.getPlaylist(args);
+      LOG.info("Dequeueing " + args.path + " from " + args.playlist);
       var This = this;
       return this.S(() => {
-         PopQ.remove(path);
-         return This.savePopQ()().then(This.dequeue(path)).then(This.queueStatus());
+         var rem = playlist.remove(path);
+         if (rem.count > 0) {
+            return This.savePlaylist(playlist)().then(This.dequeue(path)).then(This.playlistStatus(playlist));
+         } else {
+            // no change
+            return This.playlistStatus(playlist)();
+         }
       });
    },
    topQueue: function(path) {
       LOG.warning("topQueue probably doesn't do what you want anymore.");
+      throw "topQueue is probably broken.";
       var This = this;
       var tops = []; // paths that go on top
       var restOfSongs = []; // everything after
@@ -390,6 +427,7 @@ const cmusProto = {
       return function() {
          return This.playerStatus()();
       };
+      /*
       var This = this;
       var toQ = [];
       return function() {
@@ -406,25 +444,17 @@ const cmusProto = {
             .then(This.next())
             .then(This.playerStatus())
       };
+      */
    },
    QueueJump: function(path) {
-      LOG.info("Jumping to " + path + " in " + PopQ.name);
       return this.S(this.queueJump(path));
    },
-   SelectQueue: function(name) {
-      if (PopQSet[name] !== undefined) {
-         LOG.info("Switching to PopQSet: " + name);
-         PopQ = PopQSet[name];
-      } else {
-         LOG.warn("No PopQ named " + name);
-      }
-      return this.S(this.queueStatus());
-   },
-   savePopQ: function() {
+   savePlaylist: function(playlist) {
       return function() {
-         LOG.info("Saving queues to " + queueFile);
-         var file = fs.createWriteStream(queueFile, { flags: 'w', defaultEncoding: 'utf8' });
-         file.write(JSON.stringify(PopQSet));
+         const path = playlist.getFilePath();
+         LOG.info("Saving playlist to " + path);
+         var file = fs.createWriteStream(path, { flags: 'w', defaultEncoding: 'utf8' });
+         file.write(JSON.stringify(playlist));
          return Promise.resolve(true);
       };
    },
@@ -440,6 +470,52 @@ const cmusProto = {
    Next: function() { return this.S(this.next()); },
    previous: function() { return this.oneShot(['--prev']); },
    Previous: function() { return this.S(this.previous()); },
+   UpdatePlaylistSongFields: function() {
+      var count = 0;
+      const keys = Object.keys(PlaylistSet);
+      var p = Promise.resolve(true);
+      keys.forEach(k => {
+         var playlist = PlaylistSet[k];
+         LOG.info("Updating " + playlist.name + " (" + playlist.songs.length + ")");
+         playlist.songs.forEach(s => {
+            p = p.then(() => {
+               ++count;
+               var updatePromise = BEET.UpdateSongWithLatestFields(s);
+               return updatePromise;
+            }).then(This.savePlaylist(playlist));
+         });
+      });
+      var This = this;
+      return p.then(() => { return {count: count}; });
+   },
+   NewPlaylist: function(args) {
+      if (PlaylistSet[args.name] !== undefined) {
+         LOG.warn("playlist named '" + name + "' already exists.");
+         throw "playlist named '" + name + "' already exists.";
+      }
+      var pl = makePlaylist(name);
+      PlaylistSet[name] = pl;
+      LOG.info("Writing out new playlist: " + name);
+      var This = this;
+      return This.savePlaylist(pl)().then(This.playlistStatus(pl));
+   },
+   AppendToPlaylist: function(args) {
+      var playlist = this.getPlaylist(args);
+      playlist.append(args.path);
+      return this.savePlaylist(playlist)().then(this.playlistStatus(playlist));
+   },
+   ListPlaylist: function() {
+      var ret = {};
+      var names = Object.keys(PlaylistSet);
+      names.forEach(n => {
+         var p = PlaylistSet[n];
+         if (p.name) {
+            console.log(p.name);
+            ret[n] = { name: p.name, count: p.songs.length };
+         }
+      });
+      return Promise.resolve(ret);
+   }
       /* This doesn't really fit within the remote.command paradigm, and it isn't used,
        * so I'm going to just avoid dealing with it right now.
    FavoriteCurrentlyPlaying: function() {
@@ -449,13 +525,17 @@ const cmusProto = {
 
 };
 
+var _cmus = (function() {
+   var ret = Object.create(cmusProto);
+   ret.Seek = makeSeek(ret);
+   ret.remote = makeCmusRemote();
+   ret.C = function(args) { return ret.remote.command(args); };
+   ret.S = function(s) { return ret.remote.sync(s); };
+   return ret;
+})();
+
 module.exports = {
    makeCmus: function() {
-      var ret = Object.create(cmusProto);
-      ret.Seek = makeSeek(ret);
-      ret.remote = makeCmusRemote();
-      ret.C = function(args) { return ret.remote.command(args); };
-      ret.S = function(s) { return ret.remote.sync(s); };
-      return ret;
+      return _cmus;
    }
 };

@@ -17,6 +17,7 @@ function handleRequest(req, resp) {
       resp.on('finish', () => { --RequestsInFlight; });
       dispatcher.dispatch(req, resp);
    } catch (err) {
+      --RequestsInFlight;
       LOG.error("--- Error serving request " + tidyUrl(req) + ": " + err.stack);
    }
 }

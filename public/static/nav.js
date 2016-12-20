@@ -111,7 +111,8 @@ var makeNav = function(divId) {
          clearChildren(div);
          this.playlistItems = [];
          var This = this;
-         Playlists.playlists.forEach((name) => {
+         names = Object.keys(Playlists.playlists);
+         names.forEach((name) => {
             var namediv = document.createElement("div");
             namediv.className = "indentedNav";
             namediv.appendChild(document.createTextNode(name));
@@ -146,7 +147,7 @@ var makeNav = function(divId) {
          namediv.appendChild(idiv);
          namediv.appendChild(document.createTextNode(tag.name + " (" + tag.count + ")"));
          namediv.onclick = () => {
-            ResultsSongTable.SetSongServer(TagServers[tag.name]);
+            Backend.SearchForTag(tag.name, queryCallback);
          };
          return namediv;
       },
@@ -156,11 +157,9 @@ var makeNav = function(divId) {
          this.tagItems = [];
          var This = this;
          var alphad = [];
-         for (t in TagDb) {
-            alphad.push(t);
-         }
-         alphad.sort();
-         alphad.forEach(t => div.appendChild(this.makeTagDiv(TagDb[t])));
+         // TODO: sort alpha
+         TagList.forEach(t => alphad.push(t));
+         alphad.forEach(t => div.appendChild(this.makeTagDiv(t)));
       },
       toggleArtistPicker: function() {
          if (this.artistsVisible) { // visible to hidden

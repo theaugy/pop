@@ -3,6 +3,7 @@ const SAFETY = require('../lib/safety.js');
 const LOG = require('../lib/log.js');
 const QUERY = require('../lib/songquery.js');
 const SONG = require('../lib/song.js');
+const BEET = require('../lib/beet.js').makeBeet();
 const fs = require('fs');
 
 function makeplList(plPaths) {
@@ -28,7 +29,7 @@ const pliProto = {
       if (plName.match(/\.\./) !== null) {
          throw "Playlist name cannot contain dot-dot: " + plName;
       }
-      return '/m/playlists/' + plName + '.m3u';
+      return '/m/playlists/' + plName + '.json';
    },
    List: function() {
       var output = spawn("/usr/bin/find", ['/m/playlists', '-name', '*.m3u']);
@@ -58,9 +59,25 @@ const pliProto = {
    Write: function(plName, songs) {
       LOG.info("Overwriting " + plName + " with " + songs.length + " songs");
       var file = fs.createWriteStream(this.nameToPath(plName), { flags: 'w' } );
-      songs.forEach((song) => {
-         file.write(song.path + "\n");
+      file.write(JSON.stringify({ name: plName, songs: songs }));
+   },
+   ConvertM3uToJson: function(m3upath, name) {
+      console.log("converting " + m3upath + " to " + name);
+      var output = spawn("/bin/cat", [m3upath]);
+      var paths = output.stdout.toString().split("\n");
+      var songs = [];
+      var finalSongs = [];
+      paths.forEach((p) => {
+         if (p) {
+            songs.push({ path: p });
+         }
       });
+      var pr = Promise.resolve(true);
+      songs.forEach((s) => {
+         pr = pr.then(() => { return BEET.UpdateSongWithLatestFields(s); });
+      });
+      var This = this;
+      pr.then(() => { This.Write(name, songs); });
    }
 };
 

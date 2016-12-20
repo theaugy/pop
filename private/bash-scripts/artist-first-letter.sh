@@ -1,6 +1,12 @@
 #!/bin/bash
 
 thisdir=${0%/*};
-cache="$thisdir/../../public/artist-cache"
+cache="/m/meta/artist-cache";
 letter=${1,,}
-egrep "^$letter" $cache | sed 's/^..//'
+if [[ "$letter" =~ ^[a-z] ]]; then
+   # every line that starts with the letter
+   egrep -i "^$letter" $cache
+else
+   # every line that _doesn't_ start with a letter
+   egrep "^[^a-zA-Z]" $cache
+fi

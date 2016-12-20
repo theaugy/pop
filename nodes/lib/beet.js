@@ -19,6 +19,8 @@ const ensureValidTagName = function(name) {
       throw "Tag name '" + name + " doesn't match regex " + r + ". Tag names need to be letters and periods only.";
 }
 
+var _refreshArtistCacheInProgress = false;
+
 function makeTag(tag) {
    var ret = {};
    ret.name = tag;
@@ -41,11 +43,13 @@ function retrofitTag(ret) {
       }
       return list;
    };
+   ret.HasSong = function(song) {
+      return ret.songs[song.path] !== undefined;
+   };
    return ret;
 }
 
 var Tags = {};
-
 
 function retrofitTags(tags) {
    tags.Tag = function(tag, songs) {
@@ -75,6 +79,14 @@ function retrofitTags(tags) {
       });
       return count;
    },
+   tags.Get = function(tag) {
+      var t = this[tag];
+      if (t === undefined) {
+         LOG.warn("Asked for non-existent tag " + tag);
+         throw tag + " doesn't exist.";
+      }
+      return t;
+   },
    tags.Delete = function(tag) {
       var t = this[tag];
       if (t === undefined) {
@@ -87,6 +99,14 @@ function retrofitTags(tags) {
       }
       delete this[tag];
       return count;
+   }
+   tags.RefreshSongs = function(songs) {
+      var ts = [];
+      Object.keys(tags).forEach(name => { if (Tags[name].songs) { ts.push(Tags[name]); } });
+      songs.forEach(s => {
+         s.tags = [];
+         ts.forEach(t => { if (t.HasSong(s)) s.tags.push(t.name) });
+      });
    }
 }
 
@@ -112,26 +132,25 @@ const parseableFormat=
 "$artist" + magicSeparator +
 "$title" + magicSeparator +
 "$album" + magicSeparator +
+"$year" + magicSeparator +
+"$length" + magicSeparator +
+"$track" + magicSeparator +
+"$id" + magicSeparator +
+"$format" + magicSeparator +
+"$bitrate" + magicSeparator +
 "$path";
 
 const beetProto = {
    GuessTotalSongsInCollection: function() {
       return 32000; // just a guess. that happens to be right.
    },
-   outputToSongs: function(output) {
-      const paths = output.split("\n");
-      const songs = SONG.parseSongs(paths);
-      return songs;
-   },
    Random: function(count) {
       var This = this;
 
       var p = new Promise(function(resolve, reject) {
-         var infile = fs.createReadStream("./artist-cache");
+         var infile = fs.createReadStream('/m/meta/artist-cache');
          infile.setEncoding('utf8');
          var rl = readline.createInterface({ input: infile });
-         var errs = 0;
-         var startLetter_path = /(.) (.+)/;
          var counter = 0;
          var period = This.GuessTotalSongsInCollection() / count;
          var songs = [];
@@ -141,31 +160,23 @@ const beetProto = {
          infile.on('error', function(err) { LOG.error("Error in artist cache: " + err); });
 
          rl.on('line', function(line) {
-            var m = line.match(startLetter_path);
-            if (m !== null) {
-               ++matches;
-               if (hit(period))
-                  songs.push(SONG.parseSong(m[2]));
-            } else {
-               if (firsterr === null) firsterr = line;
-               errs++;
+            if (hit(period)) {
+               songs.push(This.parseableFormatToSong(line));
             }
             ++counter;
          });
 
          rl.on('close', function() {
-            if (errs > 0) {
-               LOG.warn(errs + " errors while reading artist-cache lines. First error: " + firsterr);
-            }
-            LOG.info("Finished getting " + count + " random out of " + counter + " lines. period "
+            LOG.info("Finished getting " + songs.length + " random out of " + counter + " lines. period "
                      + period + ". Returning " + songs.length);
+            SONG.cacheSongs(songs);
+            Tags.RefreshSongs(songs);
             resolve(QUERY.makeQueryResult("random " + count, songs));
          });
       });
 
       return p;
    },
-   artistStartRegex: /artist::\^(.)/,
    cleanupId: function(id) {
       // for reasons I don't understand, requesting --format=$id can have 'undefined' in
       // the first line. So this function comes in handy
@@ -185,18 +196,39 @@ const beetProto = {
          artist: fields[0],
          title: fields[1],
          album: fields[2],
-         path: fields[3]
+         year: fields[3],
+         length: fields[4],
+         track: fields[5],
+         id: fields[6],
+         format: fields[7],
+         bitrate: fields[8],
+         path: fields[9]
       });
    },
-   idToSong: function(id) {
+   RefreshArtistCache: function() {
+      if (_refreshArtistCacheInProgress === true) {
+         LOG.warn("Artist cache refresh already in progress.");
+         throw "Only one artist cache refresh can be in progress at once.";
+      }
       var This = this;
-      return new Promise(function(resolve, reject) {
-         This.beetEocCallback.push(function() {
-            const s = This.parseableFormatToSong(This.outputBuffer);
-            This.outputBufer = "";
-            resolve(s);
+      return new Promise(function(resolve) {
+         var count = 0;
+         // because this will be a _huge_ dump, it makes sense to process as we go.
+         // So don't use the This.beet to do it.
+         LOG.info("RefreshArtistCache underway");
+         var beet = spawnAsync(beetPath(), ['ls', '--format=' + parseableFormat]);
+         beet.stdout.setEncoding('utf8');
+         beet.readline = readline.createInterface({ input: beet.stdout });
+         var w = fs.createWriteStream('/m/meta/artist-cache', { flags: 'w', defaultEncoding: 'utf8' });
+         beet.readline.on('line', l => {
+            ++count;
+            w.write(l + "\n");
          });
-         This.beet.stdin.write("ls --format=" + parseableFormat + " id: " + id + "\n");
+         beet.readline.on('close', () => {
+            _refreshArtistCacheInProgress = false;
+            LOG.info("RefreshArtistCache done (count: " + count + ")");
+            resolve({ count: count });
+         });
       });
    },
    Query: function(q) {
@@ -230,14 +262,57 @@ const beetProto = {
             }
          });
          LOG.info("Querying for " + q + " returned " + songs.length + " songs in " + ms + "ms");
+         SONG.cacheSongs(songs);
+         Tags.RefreshSongs(songs);
          return QUERY.makeQueryResult(q, songs);
       });
       return p;
    },
+   // This should be passed a song with a .path field.
+   UpdateSongWithLatestFields: function(song) {
+      if (!song.path) {
+         LOG.warn("Cannot update a song with no path: " + JSON.stringify(song));
+         throw "Cannot update song with no path";
+      }
+      var This = this;
+      return new Promise(function(resolve) {
+         This.beetEocCallback.push(function() {
+            const parseables = This.outputBuffer.split("\n");
+            This.outputBuffer = "";
+            var latestSong = null;
+            parseables.forEach(p => {
+               if (p.length > 0) {
+                  if (!latestSong) {
+                     latestSong = This.parseableFormatToSong(p);
+                  } else {
+                     LOG.warn("Somehow, " + song.path + " resolved to multiple results.");
+                     throw song.path + " is not a unique path.";
+                  }
+               }
+            });
+            if (latestSong) {
+               const keys = Object.keys(latestSong);
+               // copy over latest
+               keys.forEach(k => { song[k] = latestSong[k] });
+               LOG.info("Updated " + song.path);
+               resolve(song);
+            } else {
+               LOG.warn("Doesn't seem to exist: " + song.path);
+               resolve(null);
+            }
+         });
+         const cmd = "ls --format=" + parseableFormat + " \"path:" + song.path + "\"\n";
+         This.beet.stdin.write(cmd);
+      });
+   },
    ArtistStartQuery: function(letter) {
       var output = spawn('../private/bash-scripts/artist-first-letter.sh', [letter]);
-      var songs = SONG.parseSongs(output.stdout.toString().split("\n"));
+      var parseables = output.stdout.toString().split("\n");
+      var songs = [];
+      parseables.forEach(p => songs.push(this.parseableFormatToSong(p)));
       LOG.info("Artists beginning with " + letter + " returned " + songs.length + " songs");
+      SONG.cacheSongs(songs);
+      Tags.RefreshSongs(songs);
       return QUERY.makeQueryResult("Artists beginning with " + letter, songs);
    },
    beetOutputLineListener: function(line) {
@@ -252,6 +327,7 @@ const beetProto = {
             this.beetEocCallback = tmp;
             cb();
          } else {
+            info.error("BEET_EOC with no callback");
             throw "BEET_EOC encountered, but no callback set";
          }
       } else {
@@ -263,7 +339,7 @@ const beetProto = {
       Tags.Tag(tag, songs);
       LOG.info("Tagged as " + tag + ": " + paths);
       this.saveTags();
-      return Tags;
+      return this.TagStatus();
    },
    Untag: function(tag, paths) {
       var songs = SONG.parseSongs(paths);
@@ -272,16 +348,51 @@ const beetProto = {
       if (count > 0) {
          this.saveTags();
       }
-      return Tags;
+      return this.TagStatus();
    },
    TagStatus: function() {
-      return Tags;
+      var ts = Object.keys(Tags);
+      var ret = [];
+      ts.forEach(k => {
+         if (Tags[k].songs) {
+            var count = Object.keys(Tags[k].songs).length;
+            ret.push({ name: Tags[k].name, count: count });
+         }
+      });
+      return ret;
+   },
+   TagFetch: function(args) {
+      var t = Tags.Get(args.tag);
+      var songs = [];
+      var paths = Object.keys(t.songs);
+      paths.forEach((p) => {
+         songs.push(t.songs[p]);
+      });
+      SONG.cacheSongs(songs);
+      Tags.RefreshSongs(songs);
+      return QUERY.makeQueryResult(t.name, songs);
    },
    TagDelete: function(tag) {
       var count = Tags.Delete(tag);
       LOG.info("Tag " + tag + " no longer exists (had " + count + " tracks)");
       this.saveTags();
       return Tags;
+   },
+   UpdateTagTracksToLatestFields: function() {
+      var keys = Object.keys(Tags);
+      var This = this;
+      var p = Promise.resolve(true);
+      keys.forEach((k) => {
+         var t= Tags[k];
+         var paths = Object.keys(t.songs);
+         paths.forEach((path) => {
+            p = p.then(() => { return This.UpdateSongWithLatestFields(t.songs[path]); });
+         });
+      });
+      return p.then(() => { This.saveTags(); return "OK"; });
+   },
+   RefreshSongTags: function(songs) {
+      Tags.RefreshSongs(songs);
    },
    saveTags: function() {
       var file = fs.createWriteStream(tagsFile, { flags: 'w', defaultEncoding: 'utf8' });
@@ -290,18 +401,22 @@ const beetProto = {
    beetEocCallback: []
 };
 
+var _beet = (function() {
+   var ret = Object.create(beetProto);
+   ret.beet = spawnAsync(beetPath(), ['cmdin', '--end-line=' + BEET_EOC]);
+   ret.beet.stdout.setEncoding('utf8');
+   ret.beet.readline = readline.createInterface({ input: ret.beet.stdout });
+   ret.beet.readline.on('line', function(line) {
+      ret.beetOutputLineListener(line);
+   });
+   ret.beet.readline.on('close', function() {
+      LOG.info("beet stdout closed");
+   });
+   return ret;
+})();
+
 module.exports = {
    makeBeet: function() {
-      var ret = Object.create(beetProto);
-      ret.beet = spawnAsync(beetPath(), ['cmdin', '--end-line=' + BEET_EOC]);
-      ret.beet.stdout.setEncoding('utf8');
-      ret.beet.readline = readline.createInterface({ input: ret.beet.stdout });
-      ret.beet.readline.on('line', function(line) {
-         ret.beetOutputLineListener(line);
-      });
-      ret.beet.readline.on('close', function() {
-         LOG.info("beet stdout closed");
-      });
-      return ret;
+      return _beet;
    }
 };

@@ -4,15 +4,10 @@ var pl = PL.makePlaylistInterface();
 const J = JSON.stringify;
 
 module.exports = {
-   addPlaylist: function(req) {
-      var args = ARGS.buildArgs(req);
-      pl.AddTo(args.Get("name"), args.Get("path"));
+   convertM3us: function() {
+      var names = this.listPlaylist().split("\n");
+      //pl.ConvertM3uToJson('/m/playlists/' + names[0] + '.m3u', names[0]);
+      names.forEach(n => pl.ConvertM3uToJson('/m/playlists/' + n + '.m3u', n));
+      return "OK";
    },
-   listPlaylist: function() {
-      return pl.List().names.join("\n");
-   },
-   getPlaylist: function(req) {
-      var args = ARGS.buildArgs(req);
-      return J(pl.Cat(args.Get("name")));
-   }
 }

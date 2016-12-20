@@ -12,11 +12,6 @@ const R = function(result, res, req) {
 
 // j => R(j, res, req) means "write JSON response to the result"
 module.exports = {
-   addPlaylist: function(req, res) {
-      var args = ARGS.buildArgs(req);
-      PL.AddTo(args.Get("name"), args.Get("path"));
-      return ""; // to get an empty response written. which is a-ok.
-   },
    seekto: function(req, res) {
       var args = ARGS.buildArgs(req);
       cmus.Seek.To(args.Get("s")).then(j => R(j, res, req));
@@ -38,11 +33,11 @@ module.exports = {
    },
    enqueue: function(req, res) {
       var args = ARGS.buildArgs(req);
-      cmus.Enqueue(args.Get("path")).then(j => R(j, res, req));
+      cmus.Enqueue(args.map).then(j => R(j, res, req));
    },
    dequeue: function(req, res) {
       var args = ARGS.buildArgs(req, res);
-      cmus.Dequeue(args.Get("path")).then(j => R(j, res, req));
+      cmus.Dequeue(args.map).then(j => R(j, res, req));
    },
    topqueue: function(req, res) {
       var args = ARGS.buildArgs(req, res);
@@ -51,10 +46,6 @@ module.exports = {
    queueJump: function(req, res) {
       var args = ARGS.buildArgs(req, res);
       cmus.QueueJump(args.Get("path")).then(j => R(j, res, req));
-   },
-   selectQueue: function(req, res) {
-      var args = ARGS.buildArgs(req, res);
-      cmus.SelectQueue(args.Get("name")).then(j => R(j, res, req));
    },
    setMain: function(req, res) {
       var args = ARGS.buildArgs(req, res);
@@ -70,6 +61,23 @@ module.exports = {
    },
    getMain: function(req, res) {
       cmus.GetMainPlaylist().then(j => R(j, res, req));
+   },
+   updatePlaylistSongFields: function(req, res) {
+      cmus.UpdatePlaylistSongFields().then(j => R(j, res, req));
+   },
+   newPlaylist: function(req, res) {
+      var args = ARGS.buildArgs(req, res);
+      cmu.NewPlaylist(args.map).then(j => R(j, res, req));
+   },
+   addPlaylist: function(req, res) {
+      var args = ARGS.buildArgs(req, res);
+      cmus.AppendToPlaylist(args.map).then(j => R(j, res, req));
+   },
+   listPlaylist: function(req, res) {
+      cmus.ListPlaylist().then(j => R(j, res, req));
+   },
+   getPlaylist: function(req, res) {
+      cmus.PlaylistStatus(ARGS.buildArgs(req, res).map).then(j => R(j, res, req));
    }
 }
 

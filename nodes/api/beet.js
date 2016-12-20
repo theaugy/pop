@@ -26,7 +26,7 @@ module.exports = {
       // Probably wise to standardize on promises one day.
       var args = ARGS.buildArgs(req);
       const q = args.Get('q');
-      var m = q.match(beet.artistStartRegex);
+      var m = q.match(/artist::^./);
       if (m !== null) {
          var songs = beet.ArtistStartQuery(m[1]);
          res.writeHead(200, {'Content-type': 'application/json' });
@@ -69,6 +69,15 @@ module.exports = {
    },
    tagStatus: function(req, res) {
       JR(res, beet.TagStatus());
+   },
+   tagFetch: function(req, res) {
+      JR(res, beet.TagFetch(ARGS.buildArgs(req).map));
+   },
+   refreshArtistCache: function(req, res) {
+      beet.RefreshArtistCache().then(r => JR(res, r));
+   },
+   updateTagTracksToLatestFields: function(req, res) {
+      beet.UpdateTagTracksToLatestFields().then(r => JR(res, r));
    }
 }
 

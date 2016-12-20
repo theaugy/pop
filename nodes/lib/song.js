@@ -8,69 +8,83 @@ const songProto = {
    path: null
 };
 
-function makeSong(artist, title, album, path) {
-   var ret = Object.create(songProto);
-   SAFETY.ensureDefined([artist, title, album, path],
-         ['artist', 'title', 'album', 'path']);
-   ret.title = title;
-   ret.artist = artist;
-   ret.album = album;
-   ret.path = path;
+var _songCaches = [];
+var _songCacheCount = 0;
+var _songCacheMax = 10;
+
+var _cacheMisses = 0;
+
+function _makeSongCache(songs) {
+   var ret = {};
+   songs.forEach(s => ret[s.path] = s);
    return ret;
-};
-
-var songRegex = {
-   artist_title: /[0-9]+ ([^-]*) - (.*).(flac|mp3|mp4|alac|m4a)/,
-   year_album: /[0-9][0-9][0-9][0-9] (.*)/,
-   artist_singles: /(.*) singles$/,
-   n_artist_title: /([0-9]+) (.*) - (.*).(flac|mp3|mp4|alac|m4a)/,
-};
-
-function makeSongFromPath (path) {
-   var pathParts = path.split("/");
-   if (pathParts.length !== 5) {
-      LOG.warn("Can't parse (part count=" + pathParts.length + "): " + path);
-      return makeSong("NO_ARTIST", "NO_TITLE", "NO_ALBUM", path);
-   }
-
-   // try as a single
-   var isSingles = pathParts[3].match(songRegex.artist_singles);
-   if (isSingles !== null) {
-      var a_t = pathParts[4].match(songRegex.artist_title);
-      if (a_t !== null) {
-         return makeSong(a_t[1], a_t[2], "single", path);
-      }
-   }
-
-   // try as an album track
-   var isAlbum = pathParts[3].match(songRegex.year_album);
-   if (isAlbum !== null) {
-      var n_a_t = pathParts[4].match(songRegex.n_artist_title);
-      if (n_a_t !== null) {
-         return makeSong(n_a_t[2], n_a_t[3], isAlbum[1], path);
-      }
-   }
-
-   // fallback when nothing parses
-   LOG.warn("Can't parse: " + path);
-   return makeSong("NO_ARTIST", "NO_TITLE", "NO_ALBUM", path);
 }
+
+function _addSongCache(sc) {
+   _songCaches.push(sc);
+   if (_songCaches.length > _songCacheMax) {
+      _songCaches.shift();
+   }
+}
+
+function _getCachedSong(path) {
+   var ret = null;
+   _songCaches.forEach(sc => {
+      if (!ret) {
+         if (sc[path] !== undefined) {
+            ret = sc[path];
+         }
+      }
+   });
+   return ret;
+}
+
+// song should basically have everything already. We'll just enforce
+// some basics.
+function makeSong(song) {
+   SAFETY.ensureDefined([song.artist, song.title, song.album, song.path],
+         ['artist', 'title', 'album', 'path']);
+   return song;
+};
 
 module.exports = {
    parseSong: function(path) {
-      return makeSongFromPath(path);
+      var s = _getCachedSong(path);
+      if (!s) {
+         LOG.warn("Cache miss for " + path + " (total " + _cacheMisses + ")");
+         throw "Cache miss for " + path;
+      }
+      return s;
    },
    parseSongs: function(paths) {
       var songs = [];
       var This = this;
+      var misses = false;
       paths.forEach(path => {
          if (path === "")
             return;
-         songs.push(This.parseSong(path));
+         var s = _getCachedSong(path);
+         if (!s) {
+            misses = true;
+            ++_cacheMisses;
+         } else {
+            songs.push(s);
+         }
       });
+      if (misses === true) {
+         LOG.warn("cache misses! total is now " + _cacheMisses);
+      }
       return songs;
    },
    songFromFields: function(fields) {
-      return makeSong(fields.artist, fields.title, fields.album, fields.path);
+      return makeSong(fields);
+   },
+   cacheSongs: function(songs) {
+      if (songs.length > 0) {
+         _addSongCache(_makeSongCache(songs));
+      }
+   },
+   getCacheMisses: function() {
+      return _cacheMisses;
    }
 };
