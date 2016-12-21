@@ -78,7 +78,7 @@ function retrofitTags(tags) {
          }
       });
       return count;
-   },
+   };
    tags.Get = function(tag) {
       var t = this[tag];
       if (t === undefined) {
@@ -86,7 +86,7 @@ function retrofitTags(tags) {
          throw tag + " doesn't exist.";
       }
       return t;
-   },
+   };
    tags.Delete = function(tag) {
       var t = this[tag];
       if (t === undefined) {
@@ -99,7 +99,7 @@ function retrofitTags(tags) {
       }
       delete this[tag];
       return count;
-   }
+   };
    tags.RefreshSongs = function(songs) {
       var ts = [];
       Object.keys(tags).forEach(name => { if (Tags[name].songs) { ts.push(Tags[name]); } });
@@ -107,7 +107,13 @@ function retrofitTags(tags) {
          s.tags = [];
          ts.forEach(t => { if (t.HasSong(s)) s.tags.push(t.name) });
       });
-   }
+   };
+   tags.GetTagNames = function() {
+      var names = Object.keys(this);
+      var ret = [];
+      names.forEach(n => { if (this[n].songs !== undefined) ret.push(n); });
+      return ret;
+   };
 }
 
 (function () {
@@ -371,6 +377,26 @@ const beetProto = {
       SONG.cacheSongs(songs);
       Tags.RefreshSongs(songs);
       return QUERY.makeQueryResult(t.name, songs);
+   },
+   // returns APPROXIMATELY n songs
+   TagFetchRandom: function(n) {
+      var tags = Tags.GetTagNames();
+      // make superset of all tagged songs
+      var songs = {};
+      tags.forEach(tag => {
+         var obj = Tags[tag];
+         var paths = Object.keys(obj.songs);
+         paths.forEach(p => songs[p] = obj.songs[p]);
+      });
+      var paths = Object.keys(songs);
+      var period = paths.length / n;
+      var ret = {};
+      paths.forEach(p => {
+         if (hit(period)) {
+            ret[p] = songs[p];
+         }
+      });
+      return ret;
    },
    TagDelete: function(tag) {
       var count = Tags.Delete(tag);

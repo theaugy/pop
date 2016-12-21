@@ -78,6 +78,9 @@ module.exports = {
    },
    getPlaylist: function(req, res) {
       cmus.PlaylistStatus(ARGS.buildArgs(req, res).map).then(j => R(j, res, req));
-   }
+   },
+   loadPhone: function(req, res) {
+      cmus.MagicPlaylist().then(j => R(j, res, req));
+   },
 }
 

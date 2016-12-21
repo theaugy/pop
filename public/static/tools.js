@@ -31,5 +31,6 @@ function makeTools() {
    ret.AddNonTool("Use stella's stash", () => Backend.SelectStash("stash/stella"));
    ret.AddNonTool("Prefer Collapsed", () => Settings.Set("albumDefaultState", "collapsed"));
    ret.AddNonTool("Prefer Expanded", () => Settings.Set("albumDefaultState", "expanded"));
+   ret.AddNonTool("Load Phone", () => Backend.LoadPhone());
    return ret;
 }

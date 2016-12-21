@@ -1,4 +1,5 @@
 const spawn = require('child_process').spawnSync;
+const spawnAsync = require('child_process').spawn;
 const SAFETY = require('../lib/safety.js');
 const LOG = require('../lib/log.js');
 const SONG = require('../lib/song.js');
@@ -7,6 +8,10 @@ const fs = require('fs');
 const queueFile = "/m/meta/queues.json";
 const BEET = require('../lib/beet.js').makeBeet();
 const QUERY = require('../lib/songquery.js');
+
+const hit = function(period) {
+   return Math.floor(Math.random() * period) % period === 0;
+}
 
 function makeQueueStatus(name, songList) {
    var ret = {};
@@ -29,6 +34,25 @@ function makePlaylist(name) {
    ret.name = name;
    retrofitPlaylist(ret);
    return ret;
+}
+
+function lastSevenQuery() {
+   var y = new Date().getFullYear();
+   var m = new Date().getMonth() + 1;
+   var d = new Date().getDate();
+   if (d <= 7) {
+      d = d + 28 - 7;
+      if (m == 1) {
+         y--;
+         m = 12;
+      } else {
+         m--;
+      }
+   } else {
+      d = d - 7;
+   }
+   var q = "added:" + y + "-" + m + "-" + d + ".. album+";
+   return q;
 }
 
 function retrofitPlaylist(pq) {
@@ -516,6 +540,75 @@ const cmusProto = {
          }
       });
       return Promise.resolve(ret);
+   },
+   MagicPlaylist: function() {
+      var rands = BEET.Random(70);
+      var recents = BEET.Query(lastSevenQuery());
+      var stash = this.PlaylistStatus({ playlist: "stash/augy" });
+      var tagged = BEET.TagFetchRandom(100);
+      var magicList = [];
+      return Promise.all([rands, recents, stash])
+      .then(values => {
+         var randResult = values[0];
+         var recentResult = values[1];
+         var stashResult = values[2];
+         var recentTagged = [];
+         var notRecentTagged = [];
+         var recentTaggedByPath = {};
+         recentResult.songs.forEach(s => {
+            if (tagged[s.path] !== undefined) {
+               recentTagged.push(s); // tagged, recently added
+               recentTaggedByPath[s.path] = s;
+            }
+         });
+         var taggedPaths = Object.keys(tagged);
+         taggedPaths.forEach(p => {
+            if (recentTaggedByPath[p] === undefined) {
+               // this is tagged but not recent.
+               notRecentTagged.push(tagged[p]);
+            }
+         });
+         var min = function(l, r) {
+            return l < r? l : r;
+         }
+         // 40% recent+tagged, 30% stash, 20% old+tagged, 10% random.
+         var recentTaggedCount = min(recentTagged.length, 40);
+         var stashCount = min(stashResult.songs.length, 30);
+         var notRecentTaggedCount = 20 + (70 - recentTaggedCount - stashCount);
+         var randomCount = 100 - recentTaggedCount - notRecentTaggedCount - stashCount;
+         var appendAtRandom = function(list, count) {
+            var period = list.length / count;
+            list.forEach(i => {
+               if (hit(period)) {
+                  magicList.push(i);
+               }
+            });
+         };
+         appendAtRandom(stashResult.songs, stashCount);
+         appendAtRandom(recentTagged, recentTaggedCount);
+         appendAtRandom(notRecentTagged, notRecentTaggedCount);
+         appendAtRandom(randResult.songs, randomCount);
+         LOG.info("Magic playlist has " + magicList.length + " tracks.");
+         return magicList;
+      })
+      .then(() => {
+         var This = this;
+         var path = "/tmp/MagicPlaylist.m3u";
+         return new Promise(function(resolve) {
+            var file = fs.createWriteStream(path, { flags: 'w', defaultEncoding: 'utf8' });
+            magicList.forEach(s => file.write(s.path + "\n"));
+            file.end();
+            file.on('close', () => { resolve(path); });
+         });
+      })
+      .then((path) => {
+         LOG.info("Transferring to phone: " + path);
+         var output = spawnAsync("/bin/bash", ['-i', '/m/s/plToPhone.sh', path]);
+         output.on('exit', (code) => {
+            LOG.info("Transfer to phone done. Exit code " + code);
+         });
+         return path;
+      });
    }
       /* This doesn't really fit within the remote.command paradigm, and it isn't used,
        * so I'm going to just avoid dealing with it right now.
