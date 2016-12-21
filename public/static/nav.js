@@ -194,7 +194,7 @@ var makeNav = function(divId) {
    ret.Add("random", () => Backend.GetRandomSongs(50, queryCallback));
    ret.Add("last 30 days", lastThirtyClick);
    ret.Add("last 7 days", lastSevenClick);
-   var queueBtn = ret.Add("queue", () => ResultsSongTable.SetSongServer(QueueSongServer));
+   var queueBtn = ret.Add("queue", () => ResultsSongTable.SetSongServer(StashServer));
    ret.Add("playlists", () => {
       if (ret.playlistsVisible) { // going visible to hidden
          if (ret.playlistClickCb) {
@@ -232,9 +232,10 @@ var makeNav = function(divId) {
    TagsUpdated.addCallback(() => ret.NewTags());
 
    // include queue length in the queue button's text
-   QueueUpdated.addCallback(() =>
+   var stashChanged = () =>
          queueBtn.firstChild.nodeValue =
-            QueueStatus.name + "'s queue (" + QueueStatus.songs.length + ")");
+            StashStatus.name + " (" + StashStatus.songs.length + ")";
+   CurrentStashChanged.addCallback(stashChanged);
 
    ret.NewPlaylists();
    //ret.NewTags();

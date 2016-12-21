@@ -33,6 +33,7 @@ function makePlaylist(name) {
 
 function retrofitPlaylist(pq) {
    pq.remove = function(paths) {
+      var before = this.songs.length;
       if (Array.isArray(paths)) {
          var keep = [];
          this.songs.forEach(song => {
@@ -51,6 +52,7 @@ function retrofitPlaylist(pq) {
          });
          this.songs = keep;
       }
+      return before - this.songs.length;
    };
    pq.append = function(paths) {
       var This = this;
@@ -304,10 +306,10 @@ const cmusProto = {
    },
    Enqueue: function(args) {
       var playlist = this.getPlaylist(args);
-      LOG.info("Enqueueing " + args.path + " to " + args.playlist);
+      LOG.info("Enqueueing " + args.path + " to " + playlist.name);
       var This = this;
       return this.S(function() {
-         playlist.append(path);
+         playlist.append(args.path);
          return This.savePlaylist(playlist)().then(This.playlistStatus(playlist));
       });
    },
@@ -374,7 +376,7 @@ const cmusProto = {
       if (!playlist) {
          playlist = PlaylistSet[args.name];
       }
-      if (!playlist) {
+      if (!playlist || playlist === undefined) {
          LOG.warn("no playlist named " + args.playlist + " or " + args.name);
          throw "no playlist named " + args.playlist + " or " + args.name;
       }
@@ -382,12 +384,12 @@ const cmusProto = {
    },
    Dequeue: function(args) {
       var playlist = this.getPlaylist(args);
-      LOG.info("Dequeueing " + args.path + " from " + args.playlist);
+      LOG.info("Dequeueing " + args.path + " from " + playlist.name);
       var This = this;
       return this.S(() => {
-         var rem = playlist.remove(path);
-         if (rem.count > 0) {
-            return This.savePlaylist(playlist)().then(This.dequeue(path)).then(This.playlistStatus(playlist));
+         var rem = playlist.remove(args.path);
+         if (rem > 0) {
+            return This.savePlaylist(playlist)().then(This.playlistStatus(playlist));
          } else {
             // no change
             return This.playlistStatus(playlist)();
@@ -510,7 +512,6 @@ const cmusProto = {
       names.forEach(n => {
          var p = PlaylistSet[n];
          if (p.name) {
-            console.log(p.name);
             ret[n] = { name: p.name, count: p.songs.length };
          }
       });

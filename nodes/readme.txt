@@ -91,3 +91,10 @@ updating the main playlist in the server and messing up the play order.
 Setting the main playlist should be doable automatically. Since the server
 provides everything the client sees, we could set the main playlist on
 return, which saves a (potentially very large) request.
+
+This would solve the problem of requests being denied because the request URL
+is too damn long.
+
+--------
+
+Need to get the api terminology updated

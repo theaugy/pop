@@ -8,6 +8,7 @@
  * - Backend
  * - QueueStatus
  * - Settings
+ * - CurrentStash
  */
 
 function Event(name) {
@@ -15,7 +16,82 @@ function Event(name) {
    this.callbacks = [];
 }
 
-var CurrentStash = "stash/augy";
+var Settings = {
+   settings: {},
+   kv: {}, // simple key/value of setting/value pairs
+   AddSetting: function(s) {
+      this.settings[s.name] = s;
+      this.kv[s.name] = s.defaultValue;
+   },
+   get: function(name) {
+      var s = this.settings[name];
+      if (s === undefined)
+         throw "Setting not known: " + name;
+      return s;
+   },
+   Get: function(name) {
+      return this.kv[this.get(name).name];
+   },
+   Set: function(name, value) {
+      var s = this.get(name);
+      if (value === this.kv[name])
+         return;
+      if (!s.checker(value))
+         throw "Cannot set " + name + " to " + value + "; fails check according to " + s.checker;
+      this.kv[s.name] = value;
+      s.changed.trigger();
+      this.Write(); // write on every change
+   },
+   makeSetting: function(humanName, name, defaultValue, checker)
+   {
+      var ret = {};
+      ret.humanName = humanName;
+      ret.name = name;
+      if (!checker(defaultValue))
+      {
+         throw humanName + " (" + name + ") has invalid default value " +
+            defaultValue + " according to " + checker;
+      }
+      ret.checker = checker;
+      ret.defaultValue = defaultValue;
+      ret.changed = new Event(name + " changed");
+      return ret;
+   },
+   Read: function() {
+      if (typeof(Storage) === "undefined") {
+         console.log("Browser doesn't support storage.");
+         return;
+      }
+      try {
+         var savedkv = JSON.parse(localStorage.getItem("Settings"));
+         if (Object.keys(savedkv).length > 0) {
+            this.kv = savedkv;
+         } else {
+            console.log("Empty savedkv settings.");
+         }
+      } catch(err) {
+         console.log("Nothing available for settings: " + err);
+      }
+   },
+   Write: function() {
+      if (typeof(Storage) === "undefined") {
+         console.log("Browser doesn't support storage.");
+         return;
+      }
+      localStorage.setItem("Settings", JSON.stringify(this.kv));
+      console.log("Saved " + JSON.stringify(this.kv));
+   }
+};
+Settings.AddSetting(Settings.makeSetting("Album default state",
+         "albumDefaultState", "expanded",
+         v => ["collapsed", "expanded"].indexOf(v) >= 0));
+Settings.AddSetting(Settings.makeSetting("Default Stash",
+         "defaultStash", "stash/augy", v => true));
+Settings.Read();
+
+// the 'currently selected' stash. calls to enqueue will modify
+// this playlist (i.e., when the user clicks the plus icon)
+var CurrentStash = Settings.Get("defaultStash");
 
 window.mobilecheck = function() {
    var check = false;
@@ -61,6 +137,7 @@ var NextView = new Event("NextView");
 var PreviousView = new Event("PreviousView");
 var PlaylistsLoaded = new Event("PlaylistsLoaded");
 var CmusPlaylistRecieved = new Event("CmusPlaylistRecieved");
+var CurrentStashChanged = new Event("CurrentStashChanged");
 
 // This holds the current player status. It's a big object containing
 // stuff like the current track, whether we're playing or paused, the
@@ -105,7 +182,9 @@ function isPlaying() {
 }
 
 // List of songs currently in the queue and misc. other infos
-var QueueStatus = null;
+var StashStatus = null;
+
+var StashServer = null;
 
 var TagList = null;
 
@@ -118,53 +197,6 @@ function TagsForSong(song) {
       return [];
    }
 }
-
-var Settings = {
-   settings: {},
-   AddSetting: function(s) {
-      this.settings[s.name] = s;
-      s.changed.trigger();
-   },
-   get: function(name) {
-      var s = this.settings[name];
-      if (s === undefined)
-         throw "Setting not known: " + name;
-      return s;
-   },
-   Get: function(name) {
-      return this.get(name).value;
-   },
-   Set: function(name, value) {
-      var s = this.get(name);
-      if (!s.checker(value))
-         throw "Cannot set " + name + " to " + value + "; fails check according to " + s.checker;
-      s.value = value;
-      s.changed.trigger();
-   },
-   makeSetting: function(humanName, name, defaultValue, checker)
-   {
-      var ret = {};
-      ret.humanName = humanName;
-      ret.name = name;
-      if (!checker(defaultValue))
-      {
-         throw humanName + " (" + name + ") has invalid default value " +
-            defaultValue + " according to " + checker;
-      }
-      ret.checker = checker;
-      ret.value = defaultValue;
-      ret.defaultValue = defaultValue;
-      ret.changed = new Event(name + " changed");
-      ret.Set = function(value) {
-         ret.value = value;
-         ret.changed.trigger();
-      };
-      return ret;
-   }
-};
-Settings.AddSetting(Settings.makeSetting("Album default state",
-         "albumDefaultState", "expanded",
-         v => ["collapsed", "expanded"].indexOf(v) >= 0));
 // something for the queue mode?
 // Setings.AddSetting();
 
@@ -210,6 +242,15 @@ BackendImpl.prototype.queueStatusReceived = function(response) {
    QueueUpdated.trigger();
 }
 
+BackendImpl.prototype.stashStatusReceived = function(response) {
+   StashStatus = JSON.parse(response);
+   if (StashServer === null || StashServer.name !== StashStatus.name) {
+      StashServer = makeSongServer(StashStatus.name);
+   }
+   StashServer.SetSongs(StashStatus.songs);
+   CurrentStashChanged.trigger();
+}
+
 BackendImpl.prototype.tagsReceived = function(response) {
    TagList = JSON.parse(response);
    TagsUpdated.trigger();
@@ -224,6 +265,14 @@ BackendImpl.prototype.requestAndUpdatePlayerStatus = function(req) {
    var This = this;
    var cb = function(response) {
       This.playerStatusReceived(response);
+   }
+   this.request(req, cb);
+}
+
+BackendImpl.prototype.requestAndUpdateStashStatus = function(req) {
+   var This = this;
+   var cb = function(response) {
+      This.stashStatusReceived(response);
    }
    this.request(req, cb);
 }
@@ -362,36 +411,32 @@ BackendImpl.prototype.MoveSongsToTopOfQueue = function(songs) {
 // TODO: It might be nice to enqueue a song without triggering callbacks, or
 // enqueue multiple songs at once.
 BackendImpl.prototype.EnqueueSong = function(song) {
-   this.requestAndUpdateQueueStatus("enqueue?" + makeArgs(['name', CurrentStash, "path", song["path"]]));
+   this.requestAndUpdateStashStatus("enqueue?" + makeArgs(['name', CurrentStash, "path", song["path"]]));
 }
 BackendImpl.prototype.EnqueueSongs = function(songs) {
    var args = ['name', CurrentStash];
    songs.forEach((s) => { args.push("path"); args.push(s['path']); });
-   this.requestAndUpdateQueueStatus("enqueue?" + makeArgs(args));
+   this.requestAndUpdateStashStatus("enqueue?" + makeArgs(args));
 }
 
 BackendImpl.prototype.DequeueSong = function(song) {
-   this.requestAndUpdateQueueStatus("dequeue?" + makeArgs(['name', CurrentStash, "path", song["path"]]));
+   this.requestAndUpdateStashStatus("dequeue?" + makeArgs(['name', CurrentStash, "path", song["path"]]));
 }
 
 BackendImpl.prototype.DequeueSongs = function(songs) {
    var args = ['name', CurrentStash];
    songs.forEach((s) => { args.push("path"); args.push(s['path']); });
-   this.requestAndUpdateQueueStatus("dequeue?" + makeArgs(args));
+   this.requestAndUpdateStashStatus("dequeue?" + makeArgs(args));
 }
 
 BackendImpl.prototype.QueueJump = function(song) {
    this.requestAndUpdatePlayerStatus("queueJump?" + makeArgs(['path', song.path]));
 }
 
-BackendImpl.prototype.SelectQueue = function(name) {
-   if (name === "stash/augy") {
-      CurrentStash = name;
-   } else if (name === "stash/stella") {
-      CurrentStash = name;
-   } else {
-      console.log("dunno how to select " + name);
-   }
+BackendImpl.prototype.SelectStash = function(name) {
+   Settings.Set("defaultStash", name);
+   CurrentStash = name;
+   this.requestAndUpdateStashStatus('getPlaylist?' + makeArgs(['name', name]));
 }
 
 BackendImpl.prototype.TagSong = function(tag, song) {
@@ -438,7 +483,6 @@ BackendImpl.prototype.GetPlaylists = function(callback) {
    this.request("listPlaylist", (plObject) =>
          {
             // update playlist state
-            console.log('playlists are ' + plObject);
             var playlists = JSON.parse(plObject);
             Playlists = { refreshedAt: Date.now(), playlists: playlists };
             PlaylistsLoaded.trigger();
@@ -481,6 +525,10 @@ BackendImpl.prototype.GetCmusPlaylist = function() {
 }
 
 var Backend = new BackendImpl();
+
+if (CurrentStash && CurrentStash.length > 0) {
+   Backend.SelectStash(CurrentStash);
+}
 
 // StatusTimer is responsible for updating the player status while a track is playing.
 // It is designed to provide the illusion of a constantly-updating PlayerStatus, but
@@ -592,7 +640,7 @@ function coreInit() {
    });
    // get initial statuses
    Backend.UpdatePlayerStatus();
-   Backend.UpdateQueueStatus();
+   //Backend.UpdateQueueStatus(); // TODO: We aren't using queue right now
    Backend.GetPlaylists();
    document.addEventListener("keyup", keyupHandler, false);
 }
