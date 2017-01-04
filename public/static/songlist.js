@@ -379,7 +379,7 @@ function makeSongList(tableId) {
                var matches = ret.getMatching("album", song.album, song);
                if (matches.length > 0) {
                   Backend.TagSongs(name, matches, () => {
-                     matches.forEach(m => { m.tagger.removeAll(); m.tagger.add(TagsForSong(m)); });
+                     matches.forEach(m => { m.tagger.add(name); });
                   });
                }
             },
@@ -387,7 +387,7 @@ function makeSongList(tableId) {
                var matches = ret.getMatching("album", song.album, song);
                if (matches.length > 0) {
                   Backend.UntagSongs(name, matches, () => {
-                     matches.forEach(m => { m.tagger.removeAll(); m.tagger.add(TagsForSong(m)); });
+                     matches.forEach(m => { m.tagger.remove(name); });
                   });
                }
             }
