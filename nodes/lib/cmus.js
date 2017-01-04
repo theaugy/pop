@@ -541,10 +541,16 @@ const cmusProto = {
       });
       return Promise.resolve(ret);
    },
-   MagicPlaylist: function() {
+   MagicPlaylist: function(stashPlaylist, phoneName) {
       var rands = BEET.Random(70);
       var recents = BEET.Query(lastSevenQuery());
-      var stash = this.PlaylistStatus({ playlist: "stash/augy" });
+      if (stashPlaylist === undefined) {
+         stashPlaylist = "stash/augy";
+      }
+      if (phoneName === undefined) {
+         phoneName = "phone";
+      }
+      var stash = this.PlaylistStatus({ playlist: stashPlaylist });
       var tagged = BEET.TagFetchRandom(100);
       var magicList = [];
       return Promise.all([rands, recents, stash])
@@ -584,7 +590,8 @@ const cmusProto = {
                }
             });
          };
-         appendAtRandom(stashResult.songs, stashCount);
+         stashResult.songs.forEach(s => magicList.push(s));
+         //appendAtRandom(stashResult.songs, stashCount);
          appendAtRandom(recentTagged, recentTaggedCount);
          appendAtRandom(notRecentTagged, notRecentTaggedCount);
          appendAtRandom(randResult.songs, randomCount);
@@ -603,7 +610,7 @@ const cmusProto = {
       })
       .then((path) => {
          LOG.info("Transferring to phone: " + path);
-         var output = spawnAsync("/bin/bash", ['-i', '/m/s/plToPhone.sh', path]);
+         var output = spawnAsync("/bin/bash", ['-i', '/m/s/plToPhone.sh', path, phoneName]);
          output.on('exit', (code) => {
             LOG.info("Transfer to phone done. Exit code " + code);
          });

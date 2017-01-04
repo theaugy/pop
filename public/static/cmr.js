@@ -524,8 +524,14 @@ BackendImpl.prototype.GetCmusPlaylist = function() {
    this.requestAndInitCmusPlaylist("getMain");
 }
 
-BackendImpl.prototype.LoadPhone = function() {
-   this.request("loadPhone", (response) => {
+BackendImpl.prototype.LoadAugysPhone = function() {
+   this.request("loadAugysPhone", (response) => {
+      console.log(response);
+   });
+}
+
+BackendImpl.prototype.LoadStellasPhone = function() {
+   this.request("loadStellasPhone", (response) => {
       console.log(response);
    });
 }
