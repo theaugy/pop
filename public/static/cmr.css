@@ -111,6 +111,11 @@ div.nextButton {
    font-weight: 100;
 }
 
+div.shuffleButton {
+   font-size: 3vmin;
+   font-weight: 100;
+}
+
 div.transport > div {
    display: inline-block;
 }

@@ -341,6 +341,10 @@ BackendImpl.prototype.Play = function () {
    this.requestAndUpdatePlayerStatus("play");
 }
 
+BackendImpl.prototype.Shuffle = function () {
+   this.requestAndUpdatePlayerStatus("shuffle");
+}
+
 BackendImpl.prototype.Pause = function () {
    this.requestAndUpdatePlayerStatus("pause");
 }

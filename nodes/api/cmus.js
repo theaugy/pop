@@ -22,6 +22,9 @@ module.exports = {
    play: function(req, res) {
       cmus.Play().then(j => R(j, res, req));
    },
+   shuffle: function(req, res) {
+      cmus.Shuffle().then(j => R(j, res, req));
+   },
    next: function(req, res) {
       cmus.Next().then(j => R(j, res, req));
    },

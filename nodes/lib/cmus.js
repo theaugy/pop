@@ -496,6 +496,8 @@ const cmusProto = {
    Next: function() { return this.S(this.next()); },
    previous: function() { return this.oneShot(['--prev']); },
    Previous: function() { return this.S(this.previous()); },
+   Shuffle: function() { return this.S(this.shuffle()); },
+   shuffle: function() { return this.oneShot(['-S']); },
    UpdatePlaylistSongFields: function() {
       var count = 0;
       const keys = Object.keys(PlaylistSet);

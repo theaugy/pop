@@ -45,6 +45,16 @@ function makeNextButton() {
    return ret;
 }
 
+function makeShuffleButton() {
+   var ret = document.createElement("div");
+   ret.icon = document.createElement("i");
+   ret.icon.className = "fa fa-" + "random";
+   ret.className = "shuffleButton";
+   ret.appendChild(ret.icon);
+   ret.onclick = () => Backend.Shuffle();
+   return ret;
+}
+
 function makeTransport() {
    var ret = {
       SetProgress: function(status) {
@@ -54,6 +64,14 @@ function makeTransport() {
          var dur = status['duration'];
          this.progressBar.SetPercentProgress((parseInt(pos) * 100) / parseInt(dur));
          this.progressText.textContent = parseInt(pos) + " / " + parseInt(dur);
+      },
+      SetShuffle: function(status) {
+         if (!status) return;
+         if (status.shuffle === "true") {
+            this.shuffleButton.style.opacity = 1.0;
+         } else {
+            this.shuffleButton.style.opacity = .5;
+         }
       },
       SetCurrentSong: function(status) {
          if (!status) return;
@@ -72,11 +90,13 @@ function makeTransport() {
 
    ret.playButton = makePlayButton();
    ret.nextButton = makeNextButton();
+   ret.shuffleButton = makeShuffleButton();
    if (PlayerStatus !== null) {
       if (PlayerStatus['status'] === "playing")
          ret.SetPlaying();
       else
          ret.SetPaused();
+      ret.SetShuffle(PlayerStatus);
    }
 
    const songText = cn => {
@@ -97,6 +117,7 @@ function makeTransport() {
    var a = function(e) { ret.element.append(e); };
    a(ret.playButton);
    a(ret.nextButton);
+   a(ret.shuffleButton);
    a(ret.progressBar);
    a(ret.progressText);
    a(document.createElement("br"));
@@ -109,6 +130,7 @@ function makeTransport() {
    NowPlaying.addCallback(() => ret.SetPlaying());
    NowPaused.addCallback(() => ret.SetPaused());
    NewPlayerStatus.addCallback(() => ret.SetProgress(PlayerStatus));
+   NewPlayerStatus.addCallback(() => ret.SetShuffle(PlayerStatus));
    TrackChanged.addCallback(() => ret.SetCurrentSong(PlayerStatus));
    return ret;
 }
