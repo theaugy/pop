@@ -192,6 +192,7 @@ var makeNav = function(divId) {
    ret.artists.style.display = "none";
 
    ret.Add("random", () => Backend.GetRandomSongs(50, queryCallback));
+   ret.Add("random tagged", () => Backend.GetRandomTaggedSongs(50, queryCallback));
    ret.Add("last 30 days", lastThirtyClick);
    ret.Add("last 7 days", lastSevenClick);
    var queueBtn = ret.Add("queue", () => ResultsSongTable.SetSongServer(StashServer));

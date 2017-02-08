@@ -183,6 +183,32 @@ const beetProto = {
 
       return p;
    },
+   RandomTagged: function(count) {
+      var names = Tags.GetTagNames();
+      // TODO: there is probably a more efficient way to do this.
+      var allTagged = {};
+      names.forEach(name => {
+         var t = Tags.Get(name);
+         if (t !== null) {
+            t.GetSongs().forEach(s => {
+               allTagged[s.path] = s;
+            });
+         }
+      });
+      var size = 0;
+      for (s in allTagged) {
+         ++size;
+      }
+      var period = size / count;
+      var songs = [];
+      for (path in allTagged) {
+         if (hit(period)) {
+            songs.push(allTagged[path]);
+         }
+      }
+      SONG.cacheSongs(songs);
+      return Promise.resolve(QUERY.makeQueryResult("random from tagged: " + count, songs));
+   },
    cleanupId: function(id) {
       // for reasons I don't understand, requesting --format=$id can have 'undefined' in
       // the first line. So this function comes in handy
@@ -377,26 +403,6 @@ const beetProto = {
       SONG.cacheSongs(songs);
       Tags.RefreshSongs(songs);
       return QUERY.makeQueryResult(t.name, songs);
-   },
-   // returns APPROXIMATELY n songs
-   TagFetchRandom: function(n) {
-      var tags = Tags.GetTagNames();
-      // make superset of all tagged songs
-      var songs = {};
-      tags.forEach(tag => {
-         var obj = Tags[tag];
-         var paths = Object.keys(obj.songs);
-         paths.forEach(p => songs[p] = obj.songs[p]);
-      });
-      var paths = Object.keys(songs);
-      var period = paths.length / n;
-      var ret = {};
-      paths.forEach(p => {
-         if (hit(period)) {
-            ret[p] = songs[p];
-         }
-      });
-      return ret;
    },
    TagDelete: function(tag) {
       var count = Tags.Delete(tag);

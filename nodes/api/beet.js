@@ -21,6 +21,10 @@ module.exports = {
             function(err) { LOG.warn("Problem getting random (" + J(args) + "): " + err); }
             );
    },
+   randomTagged: function(req, res) {
+      var args = ARGS.buildArgs(req);
+      beet.RandomTagged(+args.Get("n", "50")).then(qresult => JR(res, qresult));
+   },
    search: function(req, res) {
       // NOTE: this function can return a synchronous string response OR a promise.
       // Probably wise to standardize on promises one day.

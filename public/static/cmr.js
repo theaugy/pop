@@ -504,6 +504,10 @@ BackendImpl.prototype.SearchForTag = function(tag, callback) {
    this.request("tagFetch?" + makeArgs(["tag", tag]), callback);
 }
 
+BackendImpl.prototype.GetRandomTaggedSongs = function(number, callback) {
+   this.request("randomTagged?" + makeArgs(["n", number]), callback);
+}
+
 // same return as SearchForSongs
 BackendImpl.prototype.GetRandomSongs = function(number, callback) {
    this.request("random?" + makeArgs(["n", number]), callback);
