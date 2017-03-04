@@ -156,10 +156,7 @@ var makeNav = function(divId) {
          clearChildren(div);
          this.tagItems = [];
          var This = this;
-         var alphad = [];
-         // TODO: sort alpha
-         TagList.forEach(t => alphad.push(t));
-         alphad.forEach(t => div.appendChild(this.makeTagDiv(t)));
+         TagList.forEach(t => div.appendChild(this.makeTagDiv(t)));
       },
       toggleArtistPicker: function() {
          if (this.artistsVisible) { // visible to hidden

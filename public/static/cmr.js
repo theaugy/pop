@@ -253,6 +253,7 @@ BackendImpl.prototype.stashStatusReceived = function(response) {
 
 BackendImpl.prototype.tagsReceived = function(response) {
    TagList = JSON.parse(response);
+   TagList.sort((a,b) => { return a.name.localeCompare(b.name); });
    TagsUpdated.trigger();
 }
 
