@@ -430,7 +430,8 @@ const beetProto = {
       var file = fs.createWriteStream(tagsFile, { flags: 'w', defaultEncoding: 'utf8' });
       file.write(JSON.stringify(Tags));
    },
-   beetEocCallback: []
+   beetEocCallback: [],
+   outputBuffer: ""
 };
 
 var _beet = (function() {

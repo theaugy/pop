@@ -553,7 +553,9 @@ const cmusProto = {
          phoneName = "phone";
       }
       var stash = this.PlaylistStatus({ playlist: stashPlaylist });
-      var tagged = BEET.TagFetchRandom(100);
+      // TODO: update this (now returned as query, used to be
+      // map<path, song>
+      var tagged = BEET.RandomTagged(100);
       var magicList = [];
       return Promise.all([rands, recents, stash])
       .then(values => {
