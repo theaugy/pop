@@ -26,6 +26,7 @@ const URL = require('url');
 // for historical reasons, the endpoints for cmus and non-cmus calls is
 // under /cmus/*
 dispatcher.onGet(/^\/cmus\//, function(req, res) {
+   res.setHeader('Access-Control-Allow-Origin', 'null');
 	var url = URL.parse(req.url, true);
    var target = url.pathname.split("/");
    if (target.length !== 3) {
@@ -46,6 +47,15 @@ dispatcher.onGet(/^\/cmus\//, function(req, res) {
 
 dispatcher.onGet("/", function(req, res) {
    dispatcher.serveFile("./static/cmrsearch.html", req, res);
+});
+
+dispatcher.on('options', /.*/, function(req, res) {
+   res.setHeader('Access-Control-Allow-Origin', 'null');
+   res.setHeader('Access-Control-Allow-Headers', 'content-type,Cache-Control');
+
+   res.writeHead(200, { 'Content-type': 'text/plain' });
+   res.write("OK", 'utf8');
+   res.end();
 });
 
 dispatcher.setStatic("static");
