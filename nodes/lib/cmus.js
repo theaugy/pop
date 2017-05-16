@@ -303,6 +303,7 @@ const cmusProto = {
       };
    },
    QueueStatus: function() {
+      throw "QueueStatus is probably broken.";
       return this.S(this.queueStatus());
    },
    PlaylistStatus: function(args) {
