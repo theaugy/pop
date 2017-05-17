@@ -207,6 +207,7 @@ const beetProto = {
          }
       }
       SONG.cacheSongs(songs);
+      Tags.RefreshSongs(songs);
       return Promise.resolve(QUERY.makeQueryResult("random from tagged: " + count, songs));
    },
    cleanupId: function(id) {

@@ -52,7 +52,6 @@ module.exports = {
       var s = _getCachedSong(path);
       if (!s) {
          LOG.warn("Cache miss for " + path + " (total " + _cacheMisses + ")");
-         throw "Cache miss for " + path;
       }
       return s;
    },

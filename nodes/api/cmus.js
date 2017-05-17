@@ -52,7 +52,18 @@ module.exports = {
    },
    setMain: function(req, res) {
       var args = ARGS.buildArgs(req, res);
-      cmus.SetMainPlaylist(args.Get('path')).then(() => {
+      var paths = [];
+      if (args.Has('path'))
+      {
+         paths = args.Get('path');
+      }
+      else
+      {
+         // assume, somewhat dangerously, that this is a POST request
+         // and that the body contains newline-separated paths
+         req.body.split('\n').forEach(p => paths.push(p));
+      }
+      cmus.SetMainPlaylist(paths).then(() => {
             res.writeHead(200, {'Content-type': 'text/plain' });
             res.write("OK");
             res.end()

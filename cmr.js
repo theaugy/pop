@@ -45,6 +45,26 @@ dispatcher.onGet(/^\/cmus\//, function(req, res) {
    }
 });
 
+dispatcher.onPost(/^\/cmus\//, function(req, res) {
+   res.setHeader('Access-Control-Allow-Origin', 'null');
+	var url = URL.parse(req.url, true);
+   var target = url.pathname.split("/");
+   if (target.length !== 3) {
+      throw "url has wrong number of parts: " + tidyUrl(req);
+   }
+   var result = API.dispatch(target[2], req, res);
+   var writeText = function(result) {
+      res.writeHead(200, { 'Content-type': 'text/plain' });
+      res.write(result, 'utf8');
+      res.end();
+   }
+   if (result !== undefined) {
+      writeText(result);
+   } else {
+      // assume the cmus function will write the response for us.
+   }
+});
+
 dispatcher.onGet("/", function(req, res) {
    dispatcher.serveFile("./static/cmrsearch.html", req, res);
 });

@@ -82,9 +82,25 @@ function retrofitPlaylist(pq) {
       var This = this;
       var i = This.songs.length;
       if (Array.isArray(paths)) {
-         paths.forEach(p => This.songs.push(SONG.parseSong(p)));
+         paths.forEach
+            (p =>
+             {
+                  if (p && p.length > 0)
+                  {
+                     var parsed = SONG.parseSong(p);
+                     if (parsed)
+                     {
+                        This.songs.push(parsed);
+                     }
+                  }
+             }
+            );
       } else {
-         This.songs.push(SONG.parseSong(paths));
+         var parsed = SONG.parseSong(paths);
+         if (parsed)
+         {
+            This.songs.push(parsed);
+         }
       }
       // update tags when a song is added
       while (i < This.songs.length) {
