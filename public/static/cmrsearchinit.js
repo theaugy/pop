@@ -1,3 +1,0 @@
-coreInit();
-platformInit();
-cmrsearchInit();

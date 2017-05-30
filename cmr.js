@@ -66,7 +66,17 @@ dispatcher.onPost(/^\/cmus\//, function(req, res) {
 });
 
 dispatcher.onGet("/", function(req, res) {
-   dispatcher.serveFile("./static/cmrsearch.html", req, res);
+   dispatcher.serveFile("./index.html", req, res);
+});
+dispatcher.onGet(/^\/node_modules/, function(req, res) {
+	var url = URL.parse(req.url, true).pathname;
+   url.replace(/\.\./g, '__');
+   dispatcher.serveFile(".." + url, req, res);
+});
+dispatcher.onGet(/^\/dist/, function(req, res) {
+	var url = URL.parse(req.url, true).pathname;
+   url.replace(/\.\./g, '__');
+   dispatcher.serveFile("./" + url, req, res)
 });
 
 dispatcher.on('options', /.*/, function(req, res) {
