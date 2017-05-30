@@ -24,88 +24,118 @@ var _refreshArtistCacheInProgress = false;
 function makeTag(tag) {
    var ret = {};
    ret.name = tag;
+   ret.entries = [];
    ret.songs = {};
    retrofitTag(ret);
    return ret;
 }
 
 function retrofitTag(ret) {
+
+
+   ret.rebuild = function() {
+      // maps path to index
+      ret.songs = {};
+      ret.entries.forEach((e,i) => {
+         ret.songs[e.song.path] = i;
+      });
+   }
+
+   ret.rebuild();
+
    ret.AddSong = function(song) {
       if (ret.songs[song.path] === undefined) {
-         ret.songs[song.path] = song;
+         ret.entries.push(
+               {
+                  added: Date.now() / 1000,
+                  song: song
+               });
+         ret.songs[song.path] = ret.entries.length - 1;
       }
    };
    // maybe not needed...
    ret.GetSongs = function() {
       var list = [];
-      for (p in ret.songs) {
-         list.push(ret.songs[p]);
+      for (e in ret.entries) {
+         list.push(e.song);
       }
       return list;
    };
    ret.HasSong = function(song) {
       return ret.songs[song.path] !== undefined;
    };
+   ret.RemoveSong = function(song) {
+      if (!ret.HasSong(song)) return;
+      ret.entries.splice(ret.songs[song.path], 1);
+      ret.rebuild();
+   }
    return ret;
 }
 
-var Tags = {};
+var Tags = { tags: [], indexes: {} };
 
 function retrofitTags(tags) {
+
+   tags.rebuild = function() {
+      tags.indexes = {};
+      tags.tags.forEach((t,i) => tags.indexes[t.name] = i);
+   };
+   tags.rebuild();
+
    tags.Tag = function(tag, songs) {
-      var t = this[tag];
-      if (t === undefined) {
+      var t;
+      try
+      {
+         t = tags.Get(tag);
+      }
+      catch(e)
+      {
          ensureValidTagName(tag);
          // new tag.
          LOG.info("New tag: " + tag);
          t = makeTag(tag);
-         this[tag] = t;
+      }
+      if (t === undefined) {
+         throw tag + ' does not exist and is not a valid tag name';
       }
       songs.forEach(song => t.AddSong(song));
    };
    // returns number of changes
    tags.Untag = function(tag, songs) {
-      var t = this[tag];
-      if (t === undefined) {
-         LOG.warn("Asked to untag from " + tag + ", but no tag with that name exists.");
-         return 0;
-      }
+      var t = tags.Get(tag);
       var count = 0;
       songs.forEach(song => {
          if (t.songs[song.path] !== undefined) {
             ++count;
-            delete t.songs[song.path];
+            t.RemoveSong(song);
          }
       });
       return count;
    };
    tags.Get = function(tag) {
-      var t = this[tag];
-      if (t === undefined) {
+      var index = tags.indexes[tag];
+      if (index === undefined) {
          LOG.warn("Asked for non-existent tag " + tag);
          throw tag + " doesn't exist.";
       }
-      return t;
+      return tags.tags[index];
    };
    tags.Delete = function(tag) {
-      var t = this[tag];
-      if (t === undefined) {
-         LOG.warn("Asked to delete non-existent tag " + tag);
-         return 0;
-      }
-      var count = 0;
-      for (s in t.songs) {
-         ++count;
-      }
-      delete this[tag];
+      var t = tags.Get(tag);
+      var count = t.entries.length;
+      tags.tags.splice(tags.indexes[t.name], 1);
+      tags.rebuild();
       return count;
    };
    tags.RefreshSongs = function(songs) {
       var ts = [];
-      Object.keys(tags).forEach(name => { if (Tags[name].songs) { ts.push(Tags[name]); } });
       songs.forEach(s => {
          s.tags = [];
-         ts.forEach(t => { if (t.HasSong(s)) s.tags.push(t.name) });
+         tags.tags.forEach(
+               t =>
+               {
+                  if (t.HasSong(s)) s.tags.push(t.name)
+               });
       });
    };
    tags.GetTagNames = function() {
@@ -122,9 +152,7 @@ function retrofitTags(tags) {
    r.on('data', chunk => d += chunk);
    r.on('end', () => {
       Tags = JSON.parse(d);
-      for (t in Tags) {
-         retrofitTag(Tags[t]);
-      }
+      Tags.tags.forEach(t => retrofitTag(t));
       retrofitTags(Tags);
    });
 })();
@@ -384,23 +412,19 @@ const beetProto = {
       return this.TagStatus();
    },
    TagStatus: function() {
-      var ts = Object.keys(Tags);
       var ret = [];
-      ts.forEach(k => {
-         if (Tags[k].songs) {
-            var count = Object.keys(Tags[k].songs).length;
-            ret.push({ name: Tags[k].name, count: count });
-         }
-      });
+      Tags.tags.forEach(
+            t =>
+            {
+               ret.push({ name: t.name, count: t.entries.length });
+            }
+            );
       return ret;
    },
    TagFetch: function(args) {
       var t = Tags.Get(args.tag);
       var songs = [];
-      var paths = Object.keys(t.songs);
-      paths.forEach((p) => {
-         songs.push(t.songs[p]);
-      });
+      t.entries.forEach(e => songs.push(e.song));
       SONG.cacheSongs(songs);
       Tags.RefreshSongs(songs);
       return QUERY.makeQueryResult(t.name, songs);
@@ -412,16 +436,21 @@ const beetProto = {
       return Tags;
    },
    UpdateTagTracksToLatestFields: function() {
-      var keys = Object.keys(Tags);
       var This = this;
       var p = Promise.resolve(true);
-      keys.forEach((k) => {
-         var t= Tags[k];
-         var paths = Object.keys(t.songs);
-         paths.forEach((path) => {
-            p = p.then(() => { return This.UpdateSongWithLatestFields(t.songs[path]); });
-         });
-      });
+      Tags.tags.forEach(
+            t =>
+            {
+               t.entries.forEach(
+               e =>
+               {
+                  p = p.then(
+                        () =>
+                        {
+                           return This.UpdateSongWithLatestFields(e.song);
+                        });
+               });
+            });
       return p.then(() => { This.saveTags(); return "OK"; });
    },
    RefreshSongTags: function(songs) {
@@ -429,7 +458,7 @@ const beetProto = {
    },
    saveTags: function() {
       var file = fs.createWriteStream(tagsFile, { flags: 'w', defaultEncoding: 'utf8' });
-      file.write(JSON.stringify(Tags));
+      file.write(JSON.stringify(Tags, null, '  '));
    },
    beetEocCallback: [],
    outputBuffer: ""

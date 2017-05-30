@@ -325,8 +325,8 @@ const cmusProto = {
    PlaylistStatus: function(args) {
       var pl = this.getPlaylist(args);
       return this.playlistStatus(pl)().then(s => {
-         BEET.RefreshSongTags(pl.songs);
          SONG.cacheSongs(pl.songs);
+         BEET.RefreshSongTags(pl.songs);
          return s;
       });
    },
