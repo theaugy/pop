@@ -1,3 +1,4 @@
+#!/usr/bin/nodejs
 console.log(process.cwd());
 const http = require('http');
 const dispatcher = require('httpdispatcher');

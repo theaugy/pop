@@ -1,6 +1,6 @@
 #!/bin/bash
 function getDesk() {
-pacmd list-sinks | grep -A 1 --no-group-separator index | grep -B 1 analog-stereo | \
+pacmd list-sinks | grep -A 1 --no-group-separator index | grep -B 1 Audio_CODEC | \
    awk '/index/ { if ($1 == "*") print $3; else print $2; }'
 }
 function getCmus() {

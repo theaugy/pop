@@ -433,7 +433,7 @@ const beetProto = {
       var count = Tags.Delete(tag);
       LOG.info("Tag " + tag + " no longer exists (had " + count + " tracks)");
       this.saveTags();
-      return Tags;
+      return this.TagStatus();
    },
    UpdateTagTracksToLatestFields: function() {
       var This = this;

@@ -3,9 +3,14 @@
   padding: 0;
   padding-left: .3em;
   padding-right: .3em;
-  border: 1px solid;
-  border-radius: .5em;
+  border: 1px solid #4ddbaf;
+  border-radius: 0;
+  outline: none;
+  cursor: pointer;
   width: 100%;
+  border: none;
+  border-left: 2px solid #4ddbaf;
+  border-bottom: 1px solid #000000;
 }
 .component-tag .component-tag-name {
   display: inline-block;
@@ -18,10 +23,25 @@
 .component-taglist {
   margin: 0;
   padding: 0;
+  margin-top: .5em;
+  padding-top: .5em;
+  border-top: 1px solid rgba(77, 219, 175, 0.2);
 }
 .component-taglist .component-tag {
   margin: 0;
   padding: 0;
+}
+._navbutton {
+  display: block;
+}
+.component-nav .component-nav-tophone {
+  display: block;
+}
+.component-nav .component-nav-chromecast {
+  display: block;
+}
+.component-nav .component-nav-desk {
+  display: block;
 }
 .component-song {
   margin: 0;
@@ -30,10 +50,11 @@
   clear: both;
   font-size: larger;
   width: 100%;
-  border-bottom: 1px solid rgba(77, 219, 175, 0.5);
+  border-bottom: 1px solid #000000;
 }
 .component-song .component-song-text {
   display: inline-block;
+  border: none;
 }
 .component-song .component-song-field {
   float: right;
@@ -55,6 +76,12 @@
 }
 .component-song .ReactTags__tags div .ReactTags__tagInput input {
   border: none;
+}
+.component-song-playing {
+  border-left: 2px solid #4ddbaf;
+}
+.component-song-selected {
+  color: #ff0000;
 }
 .component-songlist .component-songlist-select {
   float: right;
@@ -109,8 +136,10 @@
   padding: 0;
   padding-left: .3em;
   padding-right: .3em;
-  border: 1px solid;
-  border-radius: .5em;
+  border: 1px solid #4ddbaf;
+  border-radius: 0;
+  outline: none;
+  cursor: pointer;
   border-top: none;
   border-bottom: none;
   border-right: none;
@@ -129,8 +158,10 @@ button {
   padding: 0;
   padding-left: .3em;
   padding-right: .3em;
-  border: 1px solid;
-  border-radius: .5em;
+  border: 1px solid #4ddbaf;
+  border-radius: 0;
+  outline: none;
+  cursor: pointer;
 }
 ._middleWidth {
   width: 73%;
@@ -151,7 +182,6 @@ button {
   padding-right: 1%;
   width: 15%;
   position: relative;
-  top: 4em;
 }
 @media (max-width: 1000px) {
   .component-pop .component-nav {
@@ -190,7 +220,7 @@ button {
 }
 .component-pop .component-songlist {
   overflow: auto;
-  border-left: 1px solid #4ddbaf;
+  border-left: 1px solid rgba(77, 219, 175, 0.2);
   padding-left: 1%;
   padding-top: 4em;
   width: 73%;
@@ -209,6 +239,9 @@ button {
   .component-pop .component-songlist {
     width: 82%;
   }
+}
+.component-pop .component-pop-input-sink {
+  display: none;
 }
 
 /*# sourceMappingURL=styles.css.map*/

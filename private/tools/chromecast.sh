@@ -13,4 +13,5 @@ c=$(getChromecast);
 [[ "$c" == "" ]] && { echo "Couldn't find chromecast; init script didn't work." ; exit 1 ; }
 m=$(getCmus);
 [[ "$m" == "" ]] && { echo "Cmus doesn't seem to be playing. This is OK." ; exit 0 ; }
+set -x;
 pacmd move-sink-input $m $c || { echo "error doing move-sink-input $m to $c" ; exit 1 ; }
