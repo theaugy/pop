@@ -1,4 +1,5 @@
 #!/usr/bin/nodejs
+'use strict';
 console.log(process.cwd());
 const http = require('http');
 const dispatcher = require('httpdispatcher');
@@ -10,15 +11,38 @@ function tidyUrl(req) {
 }
 
 var RequestsInFlight = 0;
+var RequestId = 0;
+var RequestsMap = {};
 
 function handleRequest(req, resp) {
+   let rid = ++RequestId;
    try {
-      LOG.info("--- Request (" + RequestsInFlight + "): " + tidyUrl(req));
+      let atStart = RequestsInFlight;
+      LOG.info("--- Request [" + rid + "] (" + atStart + "): " + tidyUrl(req));
+      RequestsMap[rid] = req;
       ++RequestsInFlight;
-      resp.on('finish', () => { --RequestsInFlight; });
-      dispatcher.dispatch(req, resp);
+      resp.on('finish', () => {
+         --RequestsInFlight;
+         delete RequestsMap[rid];
+         LOG.info("--- Finish [" + rid + "] (" + RequestsInFlight + ", span " + (RequestId - rid) + "): " + tidyUrl(req));
+      });
+
+      if (req.url.indexOf('/stat') === 0) {
+         resp.writeHead(200, {'Content-type': 'text/plain' });
+         for (let requestId in RequestsMap) {
+            const s = requestId + " " + RequestsMap[requestId].url;
+            console.log(s);
+            resp.write(s);
+            resp.write("\n");
+         }
+         resp.end();
+      }
+      else {
+         dispatcher.dispatch(req, resp);
+      }
    } catch (err) {
       --RequestsInFlight;
+      delete RequestsMap[rid];
       LOG.error("--- Error serving request " + tidyUrl(req) + ": " + err.stack);
    }
 }

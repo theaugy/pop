@@ -158,7 +158,6 @@ const cmusProto = {
                return BEET._pathsToSongs(paths)
                   .then(songs => BEET.populateTags(songs))
                   .then(songs => {
-                     console.log("got " + songs.length +  " songs");
                      mainPlaylist.songs = songs;
                      resolve(mainPlaylist);
                   });
@@ -234,14 +233,14 @@ const cmusProto = {
    Shuffle: function() { return this.S(this.shuffle()); },
    shuffle: function() { return this.oneShot(['-S']); },
    MagicPlaylist: function(tagname, phoneName) {
-      var rands = BEET.Random(50);
-      var recents = BEET.Query(lastSevenQuery());
+      let rands = BEET.Random(50);
+      let recents = BEET.Query(lastSevenQuery());
       if (phoneName === undefined) {
          phoneName = "phone";
       }
       let fromtag = BEET.TagFetch({ tag: tagname });
-      var randTagged = BEET.RandomTagged(100);
-      var magicList = [];
+      let randTagged = BEET.RandomTagged(100);
+      let magicList = [];
       return Promise.all([rands, recents, randTagged, fromtag])
       .then(values => {
          magicList = values[3].songs; // start with tagname songs
@@ -252,8 +251,8 @@ const cmusProto = {
          return magicList;
       })
       .then(() => {
-         var This = this;
-         var path = "/tmp/MagicPlaylist.m3u";
+         let This = this;
+         let path = "/tmp/MagicPlaylist.m3u";
          let seen = {};
          return new Promise(function(resolve) {
             var file = fs.createWriteStream(path, { flags: 'w', defaultEncoding: 'utf8' });

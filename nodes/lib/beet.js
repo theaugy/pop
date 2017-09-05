@@ -140,7 +140,11 @@ const beetProto = {
             + tagid + ", "
             + "'" + Date.now() / 1000 + "', "
             + position
-            + ");"
+            + ") "
+            + "where not exists(select 1 from tagged "
+            + "where beets_id = " + song.id + " "
+            + "and tag_id = " + tagid + ") "
+            + ";"
             );
    },
    Tag: function(tag, paths) {
@@ -164,7 +168,8 @@ const beetProto = {
                else prom = prom.then(() => this._sqlTagSingleSong(tagid, song, ++lastPos));
             });
             return prom;
-         });
+         })
+         .then(() => this.TagStatus());
    },
    _or: function(prefix, list, suffix) {
       let ret = "";
@@ -184,7 +189,8 @@ const beetProto = {
          .then(ids => { idlist = ids; return this._sqlGetTagId(tag); })
          .then(tagid => this._tagQuery("delete from tagged "
                   + "where tag_id = " + tagid + " "
-                  + "and (" + this._or("beets_id = ", idlist) + ")"));
+                  + "and (" + this._or("beets_id = ", idlist) + ")"))
+         .then(() => this.TagStatus());
    },
    TagStatus: function() {
       return this._tagQuery("select name,count(*) from tags "
