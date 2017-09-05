@@ -37,6 +37,7 @@ const parseableFormat=
 const beetProto = {
    Random: function(count) {
       return this._beetSongQuery("order by RANDOM() limit " + count)
+         .then(songs => this.populateTags(songs))
          .then(songs => QUERY.makeQueryResult("random " + count, songs));
    },
    RandomTagged: function(count) {
@@ -135,12 +136,12 @@ const beetProto = {
    _sqlTagSingleSong: function(tagid, song, position) {
       return this._tagQuery("insert into tagged "
             + "(beets_id, tag_id, created, position) "
-            + "values ("
+            + "select "
             + song.id + ", "
             + tagid + ", "
             + "'" + Date.now() / 1000 + "', "
             + position
-            + ") "
+            + " "
             + "where not exists(select 1 from tagged "
             + "where beets_id = " + song.id + " "
             + "and tag_id = " + tagid + ") "
@@ -202,7 +203,7 @@ const beetProto = {
    },
    TagStatus: function() {
       return this._tagQuery("select name,count(*) from tags "
-            + "join tagged on tagged.tag_id = tags.id "
+            + "left join tagged on tagged.tag_id = tags.id "
             + "group by tags.name "
             + "order by tags.name;")
          .then(lines => {
@@ -226,6 +227,18 @@ const beetProto = {
          .then(songs => this.populateTags(songs))
          .then(songs => {
             return QUERY.makeQueryResult(args.tag, songs);
+         });
+   },
+   TagCreate: function(tag) {
+      return this._tagQuery("insert into tags (name, created) "
+            + "select '" + tag + "', "
+            + "'" + Date.now() / 1000 + "' "
+            + "where not exists ( select 1 from tags "
+            + "where name = '" + tag + "'"
+            + ")"
+            + ";")
+         .then(() => {
+            return this.TagStatus();
          });
    },
    TagDelete: function(tag) {
@@ -276,21 +289,25 @@ const beetProto = {
          });
       });
    },
+   _tagQueryPromiseSerializer: Promise.resolve(true),
    _tagQuery: function(query) {
-      return new Promise((resolve, reject) => {
-         let lines = [];
-         let sq3 = this._sqlQuery('/m/meta/tags.sqlite3', query, {
-            onLine: l => lines.push(l),
-            onClose: () => resolve(lines)
+      this._tagQueryPromiseSerializer = this._tagQueryPromiseSerializer
+         .then(() => {
+            return new Promise((resolve, reject) => {
+               let lines = [];
+               let sq3 = this._sqlQuery('/m/meta/tags.sqlite3', query, {
+                  onLine: l => lines.push(l),
+                  onClose: () => resolve(lines)
+               });
+            });
          });
-      });
+      return this._tagQueryPromiseSerializer;
    },
    _pathsClause: function(paths) {
       let pathsClause = [];
       if (Array.isArray(paths))
          paths.forEach(p => {
             if (p && p.length > 0) {
-               p = p.replace("'", "''");
                pathsClause.push("path = x'" + this._hexify(p)  + "'")
             };
          });

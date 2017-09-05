@@ -67,6 +67,11 @@ module.exports = {
       }
       beet.Untag(tag, paths).then(r => JR(res, r));
    },
+   tagCreate: function(req, res) {
+      var args = ARGS.buildArgs(req);
+      const tag = args.Get('tag');
+      beet.TagCreate(tag).then(r => JR(res, r));
+   },
    tagDelete: function(req, res) {
       var args = ARGS.buildArgs(req);
       const tag = args.Get('tag');
