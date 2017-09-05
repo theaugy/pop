@@ -147,13 +147,16 @@ const beetProto = {
             + ";"
             );
    },
+   _sqlGetTagId: function(tagname) {
+      return this._tagQuery("select id from tags where name = '" + tagname + "'");
+   },
    Tag: function(tag, paths) {
       let beetSongs = [];
       let tagid;
       return this._pathsToSongs(paths)
          .then(songs => {
             beetSongs = songs;
-            return this._tagQuery("select id from tags where name = '" + tag + "'");
+            return this._sqlGetTagId(tag);
          })
          .then(tag_id => {
             tagid = tag_id;
@@ -186,10 +189,15 @@ const beetProto = {
    Untag: function(tag, paths) {
       let idlist = "";
       return this._pathsToIds(paths)
-         .then(ids => { idlist = ids; return this._sqlGetTagId(tag); })
-         .then(tagid => this._tagQuery("delete from tagged "
+         .then(ids => {
+            idlist = ids;
+            return this._sqlGetTagId(tag);
+         })
+         .then(tagid => {
+            return this._tagQuery("delete from tagged "
                   + "where tag_id = " + tagid + " "
-                  + "and (" + this._or("beets_id = ", idlist) + ")"))
+                  + "and (" + this._or("beets_id = ", idlist) + ")")
+         })
          .then(() => this.TagStatus());
    },
    TagStatus: function() {

@@ -20,6 +20,9 @@
   display: inline-block;
   float: right;
 }
+.component-tag-selected {
+  color: #ff0000;
+}
 .component-taglist {
   margin: 0;
   padding: 0;
