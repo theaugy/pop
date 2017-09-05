@@ -1,3 +1,4 @@
+'use strict'
 const BEET = require('../lib/beet.js');
 const ARGS = require('../lib/args.js');
 const J = JSON.stringify;
@@ -55,7 +56,7 @@ module.exports = {
       if (!Array.isArray(paths)) {
          paths = [paths];
       }
-      JR(res, beet.Tag(tag, paths));
+      beet.Tag(tag, paths).then(r => JR(res, r));
    },
    untag: function(req, res) {
       var args = ARGS.buildArgs(req);
@@ -64,24 +65,18 @@ module.exports = {
       if (!Array.isArray(paths)) {
          paths = [paths];
       }
-      JR(res, beet.Untag(tag, paths));
+      beet.Untag(tag, paths).then(r => JR(res, r));
    },
    tagDelete: function(req, res) {
       var args = ARGS.buildArgs(req);
       const tag = args.Get('tag');
-      JR(res, beet.TagDelete(tag));
+      beet.TagDelete(tag).then(r => JR(res, r));
    },
    tagStatus: function(req, res) {
-      JR(res, beet.TagStatus());
+      beet.TagStatus().then(r => JR(res, r));
    },
    tagFetch: function(req, res) {
-      JR(res, beet.TagFetch(ARGS.buildArgs(req).map));
-   },
-   refreshArtistCache: function(req, res) {
-      beet.RefreshArtistCache().then(r => JR(res, r));
-   },
-   updateTagTracksToLatestFields: function(req, res) {
-      beet.UpdateTagTracksToLatestFields().then(r => JR(res, r));
+      beet.TagFetch(ARGS.buildArgs(req).map).then(r => JR(res, r));
    }
 }
 

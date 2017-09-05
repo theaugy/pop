@@ -1,6 +1,5 @@
 const CMUS = require('../lib/cmus.js');
 const ARGS = require('../lib/args.js');
-const PL = require('../lib/playlists.js').makePlaylistInterface();
 var cmus = CMUS.makeCmus();
 
 const R = function(result, res, req) {
@@ -31,25 +30,6 @@ module.exports = {
    pause: function(req, res) {
       cmus.Pause().then(j => R(j, res, req));
    },
-   queue: function(req, res) {
-      cmus.QueueStatus().then(j => R(j, res, req));
-   },
-   enqueue: function(req, res) {
-      var args = ARGS.buildArgs(req);
-      cmus.Enqueue(args.map).then(j => R(j, res, req));
-   },
-   dequeue: function(req, res) {
-      var args = ARGS.buildArgs(req, res);
-      cmus.Dequeue(args.map).then(j => R(j, res, req));
-   },
-   topqueue: function(req, res) {
-      var args = ARGS.buildArgs(req, res);
-      cmus.TopQueue(args.Get("path")).then(j => R(j, res, req));
-   },
-   queueJump: function(req, res) {
-      var args = ARGS.buildArgs(req, res);
-      cmus.QueueJump(args.Get("path")).then(j => R(j, res, req));
-   },
    setMain: function(req, res) {
       var args = ARGS.buildArgs(req, res);
       var paths = [];
@@ -76,28 +56,11 @@ module.exports = {
    getMain: function(req, res) {
       cmus.GetMainPlaylist().then(j => R(j, res, req));
    },
-   updatePlaylistSongFields: function(req, res) {
-      cmus.UpdatePlaylistSongFields().then(j => R(j, res, req));
-   },
-   newPlaylist: function(req, res) {
-      var args = ARGS.buildArgs(req, res);
-      cmu.NewPlaylist(args.map).then(j => R(j, res, req));
-   },
-   addPlaylist: function(req, res) {
-      var args = ARGS.buildArgs(req, res);
-      cmus.AppendToPlaylist(args.map).then(j => R(j, res, req));
-   },
-   listPlaylist: function(req, res) {
-      cmus.ListPlaylist().then(j => R(j, res, req));
-   },
-   getPlaylist: function(req, res) {
-      cmus.PlaylistStatus(ARGS.buildArgs(req, res).map).then(j => R(j, res, req));
-   },
    loadAugysPhone: function(req, res) {
-      cmus.MagicPlaylist("stash/augy", "phone").then(j => R(j, res, req));
+      cmus.MagicPlaylist("new", "phone").then(j => R(j, res, req));
    },
    loadStellasPhone: function(req, res) {
-      cmus.MagicPlaylist("stash/stella", "stellaphone").then(j => R(j, res, req));
+      cmus.MagicPlaylist("new", "stellaphone").then(j => R(j, res, req));
    },
 }
 

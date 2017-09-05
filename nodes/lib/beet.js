@@ -1,4 +1,4 @@
-const spawn = require('child_process').spawnSync;
+'use strict';
 const spawnAsync = require('child_process').spawn;
 const SAFETY = require('../lib/safety.js');
 const LOG = require('../lib/log.js');
@@ -8,154 +8,13 @@ const fs = require('fs');
 const readline = require('readline');
 const tagsFile = "/m/meta/tags.json";
 
-const hit = function(period) {
-   return Math.floor(Math.random() * period) % period === 0;
-}
-
+// TODO: a TagCreate api?
 const ensureValidTagName = function(name) {
    if (!name) throw "Invalid tag name (kinda falsy amirite?)";
    var r = /^[a-zA-Z][a-zA-Z.0-9]+$/;
    if (!name.match(r))
       throw "Tag name '" + name + " doesn't match regex " + r + ". Tag names need to be letters and periods only.";
 }
-
-var _refreshArtistCacheInProgress = false;
-
-function makeTag(tag) {
-   var ret = {};
-   ret.name = tag;
-   ret.entries = [];
-   ret.songs = {};
-   retrofitTag(ret);
-   return ret;
-}
-
-function retrofitTag(ret) {
-
-
-   ret.rebuild = function() {
-      // maps path to index
-      ret.songs = {};
-      ret.entries.forEach((e,i) => {
-         ret.songs[e.song.path] = i;
-      });
-   }
-
-   ret.rebuild();
-
-   ret.AddSong = function(song) {
-      if (ret.songs[song.path] === undefined) {
-         ret.entries.push(
-               {
-                  added: Date.now() / 1000,
-                  song: song
-               });
-         ret.songs[song.path] = ret.entries.length - 1;
-      }
-   };
-   // maybe not needed...
-   ret.GetSongs = function() {
-      var list = [];
-      for (e in ret.entries) {
-         list.push(e.song);
-      }
-      return list;
-   };
-   ret.HasSong = function(song) {
-      return ret.songs[song.path] !== undefined;
-   };
-   ret.RemoveSong = function(song) {
-      if (!ret.HasSong(song)) return;
-      ret.entries.splice(ret.songs[song.path], 1);
-      ret.rebuild();
-   }
-   return ret;
-}
-
-var Tags = { tags: [], indexes: {} };
-
-function retrofitTags(tags) {
-
-   tags.rebuild = function() {
-      tags.indexes = {};
-      tags.tags.forEach((t,i) => tags.indexes[t.name] = i);
-   };
-   tags.rebuild();
-
-   tags.Tag = function(tag, songs) {
-      var t;
-      try
-      {
-         t = tags.Get(tag);
-      }
-      catch(e)
-      {
-         ensureValidTagName(tag);
-         // new tag.
-         LOG.info("New tag: " + tag);
-         t = makeTag(tag);
-      }
-      if (t === undefined) {
-         throw tag + ' does not exist and is not a valid tag name';
-      }
-      songs.forEach(song => t.AddSong(song));
-   };
-   // returns number of changes
-   tags.Untag = function(tag, songs) {
-      var t = tags.Get(tag);
-      var count = 0;
-      songs.forEach(song => {
-         if (t.songs[song.path] !== undefined) {
-            ++count;
-            t.RemoveSong(song);
-         }
-      });
-      return count;
-   };
-   tags.Get = function(tag) {
-      var index = tags.indexes[tag];
-      if (index === undefined) {
-         LOG.warn("Asked for non-existent tag " + tag);
-         throw tag + " doesn't exist.";
-      }
-      return tags.tags[index];
-   };
-   tags.Delete = function(tag) {
-      var t = tags.Get(tag);
-      var count = t.entries.length;
-      tags.tags.splice(tags.indexes[t.name], 1);
-      tags.rebuild();
-      return count;
-   };
-   tags.RefreshSongs = function(songs) {
-      var ts = [];
-      songs.forEach(s => {
-         s.tags = [];
-         tags.tags.forEach(
-               t =>
-               {
-                  if (t.HasSong(s)) s.tags.push(t.name)
-               });
-      });
-   };
-   tags.GetTagNames = function() {
-      var names = Object.keys(this);
-      var ret = [];
-      names.forEach(n => { if (this[n].songs !== undefined) ret.push(n); });
-      return ret;
-   };
-}
-
-(function () {
-   var r = fs.createReadStream(tagsFile, { encoding: 'utf8' });
-   var d = "";
-   r.on('data', chunk => d += chunk);
-   r.on('end', () => {
-      Tags = JSON.parse(d);
-      Tags.tags.forEach(t => retrofitTag(t));
-      retrofitTags(Tags);
-   });
-})();
 
 const BEET_EOC = "CMR_SERVER_REQUEST_END_OF_COMMAND_OUTPUT";
 
@@ -174,69 +33,17 @@ const parseableFormat=
 "$bitrate" + magicSeparator +
 "$path";
 
+
 const beetProto = {
-   GuessTotalSongsInCollection: function() {
-      return 32000; // just a guess. that happens to be right.
-   },
    Random: function(count) {
-      var This = this;
-
-      var p = new Promise(function(resolve, reject) {
-         var infile = fs.createReadStream('/m/meta/artist-cache');
-         infile.setEncoding('utf8');
-         var rl = readline.createInterface({ input: infile });
-         var counter = 0;
-         var period = This.GuessTotalSongsInCollection() / count;
-         var songs = [];
-         var matches = 0;
-         var firsterr = null;
-
-         infile.on('error', function(err) { LOG.error("Error in artist cache: " + err); });
-
-         rl.on('line', function(line) {
-            if (hit(period)) {
-               songs.push(This.parseableFormatToSong(line));
-            }
-            ++counter;
-         });
-
-         rl.on('close', function() {
-            LOG.info("Finished getting " + songs.length + " random out of " + counter + " lines. period "
-                     + period + ". Returning " + songs.length);
-            SONG.cacheSongs(songs);
-            Tags.RefreshSongs(songs);
-            resolve(QUERY.makeQueryResult("random " + count, songs));
-         });
-      });
-
-      return p;
+      return this._beetSongQuery("order by RANDOM() limit " + count)
+         .then(songs => QUERY.makeQueryResult("random " + count, songs));
    },
    RandomTagged: function(count) {
-      var names = Tags.GetTagNames();
-      // TODO: there is probably a more efficient way to do this.
-      var allTagged = {};
-      names.forEach(name => {
-         var t = Tags.Get(name);
-         if (t !== null) {
-            t.GetSongs().forEach(s => {
-               allTagged[s.path] = s;
-            });
-         }
-      });
-      var size = 0;
-      for (s in allTagged) {
-         ++size;
-      }
-      var period = size / count;
-      var songs = [];
-      for (path in allTagged) {
-         if (hit(period)) {
-            songs.push(allTagged[path]);
-         }
-      }
-      SONG.cacheSongs(songs);
-      Tags.RefreshSongs(songs);
-      return Promise.resolve(QUERY.makeQueryResult("random from tagged: " + count, songs));
+      return this._tagQuery(
+            "select distinct beets_id from tagged order by RANDOM() limit " + count)
+         .then(ids => this._idToSong(ids))
+         .then(songs => QUERY.makeQueryResult("random from tagged: " + count, songs));
    },
    cleanupId: function(id) {
       // for reasons I don't understand, requesting --format=$id can have 'undefined' in
@@ -252,7 +59,10 @@ const beetProto = {
          b = b.substr(0, b.length-1);
       var fields = b.split(magicSeparator);
       if (fields.length < 4)
+      {
+         console.log("Error getting fields from " + b + ": " + fields.length + " < 4");
          throw "Error getting fields from " + b + ": " + fields.length + " < 4";
+      }
       return SONG.songFromFields({
          artist: fields[0],
          title: fields[1],
@@ -264,32 +74,6 @@ const beetProto = {
          format: fields[7],
          bitrate: fields[8],
          path: fields[9]
-      });
-   },
-   RefreshArtistCache: function() {
-      if (_refreshArtistCacheInProgress === true) {
-         LOG.warn("Artist cache refresh already in progress.");
-         throw "Only one artist cache refresh can be in progress at once.";
-      }
-      var This = this;
-      return new Promise(function(resolve) {
-         var count = 0;
-         // because this will be a _huge_ dump, it makes sense to process as we go.
-         // So don't use the This.beet to do it.
-         LOG.info("RefreshArtistCache underway");
-         var beet = spawnAsync(beetPath(), ['ls', '--format=' + parseableFormat]);
-         beet.stdout.setEncoding('utf8');
-         beet.readline = readline.createInterface({ input: beet.stdout });
-         var w = fs.createWriteStream('/m/meta/artist-cache', { flags: 'w', defaultEncoding: 'utf8' });
-         beet.readline.on('line', l => {
-            ++count;
-            w.write(l + "\n");
-         });
-         beet.readline.on('close', () => {
-            _refreshArtistCacheInProgress = false;
-            LOG.info("RefreshArtistCache done (count: " + count + ")");
-            resolve({ count: count });
-         });
       });
    },
    Query: function(q) {
@@ -305,11 +89,8 @@ const beetProto = {
          });
          const cmd = "ls --format=" + parseableFormat + " " + q + "\n";
          This.beet.stdin.write(cmd);
-         // NOTE: I have experimented with returning an id, then converting the id to
-         // parseable format. Which feels a bit cleaner to me. This slows things down
-         // massively, though.
       })
-      .then(function(parseables) {
+      .then((parseables) => {
          var ms = Date.now() - start;
          parseables.forEach((p) => {
             try
@@ -323,58 +104,14 @@ const beetProto = {
             }
          });
          LOG.info("Querying for " + q + " returned " + songs.length + " songs in " + ms + "ms");
-         SONG.cacheSongs(songs);
-         Tags.RefreshSongs(songs);
-         return QUERY.makeQueryResult(q, songs);
-      });
+         return this.populateTags(songs);
+      })
+      .then(songs => QUERY.makeQueryResult(q, songs));
       return p;
    },
-   // This should be passed a song with a .path field.
-   UpdateSongWithLatestFields: function(song) {
-      if (!song.path) {
-         LOG.warn("Cannot update a song with no path: " + JSON.stringify(song));
-         throw "Cannot update song with no path";
-      }
-      var This = this;
-      return new Promise(function(resolve) {
-         This.beetEocCallback.push(function() {
-            const parseables = This.outputBuffer.split("\n");
-            This.outputBuffer = "";
-            var latestSong = null;
-            parseables.forEach(p => {
-               if (p.length > 0) {
-                  if (!latestSong) {
-                     latestSong = This.parseableFormatToSong(p);
-                  } else {
-                     LOG.warn("Somehow, " + song.path + " resolved to multiple results.");
-                     throw song.path + " is not a unique path.";
-                  }
-               }
-            });
-            if (latestSong) {
-               const keys = Object.keys(latestSong);
-               // copy over latest
-               keys.forEach(k => { song[k] = latestSong[k] });
-               LOG.info("Updated " + song.path);
-               resolve(song);
-            } else {
-               LOG.warn("Doesn't seem to exist: " + song.path);
-               resolve(null);
-            }
-         });
-         const cmd = "ls --format=" + parseableFormat + " \"path:" + song.path + "\"\n";
-         This.beet.stdin.write(cmd);
-      });
-   },
    ArtistStartQuery: function(letter) {
-      var output = spawn('../private/bash-scripts/artist-first-letter.sh', [letter]);
-      var parseables = output.stdout.toString().split("\n");
-      var songs = [];
-      parseables.forEach(p => songs.push(this.parseableFormatToSong(p)));
-      LOG.info("Artists beginning with " + letter + " returned " + songs.length + " songs");
-      SONG.cacheSongs(songs);
-      Tags.RefreshSongs(songs);
-      return QUERY.makeQueryResult("Artists beginning with " + letter, songs);
+      return this._beetSongQueryWhere("artist like '" + letter + "%'")
+         .then(songs => QUERY.makeQueryResult("Artists beginning with " + letter, songs));
    },
    beetOutputLineListener: function(line) {
       if (line === BEET_EOC) {
@@ -395,73 +132,213 @@ const beetProto = {
          this.outputBuffer += line + "\n";
       }
    },
+   _sqlTagSingleSong: function(tagid, song, position) {
+      return this._tagQuery("insert into tagged "
+            + "(beets_id, tag_id, created, position) "
+            + "values ("
+            + song.id + ", "
+            + tagid + ", "
+            + "'" + Date.now() / 1000 + "', "
+            + position
+            + ");"
+            );
+   },
    Tag: function(tag, paths) {
-      var songs = SONG.parseSongs(paths);
-      Tags.Tag(tag, songs);
-      LOG.info("Tagged as " + tag + ": " + paths);
-      this.saveTags();
-      return this.TagStatus();
+      let beetSongs = [];
+      let tagid;
+      return this._pathsToSongs(paths)
+         .then(songs => {
+            beetSongs = songs;
+            return this._tagQuery("select id from tags where name = '" + tag + "'");
+         })
+         .then(tag_id => {
+            tagid = tag_id;
+            return this._tagQuery("select position from tagged "
+                  + "order by position desc "
+                  + "limit 1");
+         })
+         .then(last_pos => {
+            let prom;
+            beetSongs.forEach(song => {
+               if (!prom) prom = this._sqlTagSingleSong(tagid, song, ++last_pos);
+               else prom = prom.then(() => this._sqlTagSingleSong(tagid, song, ++lastPos));
+            });
+            return prom;
+         });
+   },
+   _or: function(prefix, list, suffix) {
+      let ret = "";
+      let fixed = [];
+      list.forEach(l => {
+         let f = "";
+         if (prefix) f = prefix;
+         f += l;
+         if (suffix) f += suffix;
+         fixed.push(f);
+      });
+      return fixed.join(" or ");
    },
    Untag: function(tag, paths) {
-      var songs = SONG.parseSongs(paths);
-      var count = Tags.Untag(tag, songs);
-      LOG.info("Untagged " + count + " from " + tag + ": " + paths);
-      if (count > 0) {
-         this.saveTags();
-      }
-      return this.TagStatus();
+      let idlist = "";
+      return this._pathsToIds(paths)
+         .then(ids => { idlist = ids; return this._sqlGetTagId(tag); })
+         .then(tagid => this._tagQuery("delete from tagged "
+                  + "where tag_id = " + tagid + " "
+                  + "and (" + this._or("beets_id = ", idlist) + ")"));
    },
    TagStatus: function() {
-      var ret = [];
-      Tags.tags.forEach(
-            t =>
-            {
-               ret.push({ name: t.name, count: t.entries.length });
-            }
-            );
-      return ret;
+      return this._tagQuery("select name,count(*) from tags "
+            + "join tagged on tagged.tag_id = tags.id "
+            + "group by tags.name "
+            + "order by tags.name;")
+         .then(lines => {
+            let ret = [];
+            lines.forEach(line => {
+               let split = line.split(magicSeparator);
+               if (split.length === 2) {
+                  ret.push({ name: split[0], count: split[1] });
+               }
+            });
+            return ret;
+         });
    },
    TagFetch: function(args) {
-      var t = Tags.Get(args.tag);
-      var songs = [];
-      t.entries.forEach(e => songs.push(e.song));
-      SONG.cacheSongs(songs);
-      Tags.RefreshSongs(songs);
-      return QUERY.makeQueryResult(t.name, songs);
+      return this._tagQuery("select tagged.beets_id from tagged "
+            + "join tags where tags.id = tagged.tag_id and tags.name = '" + args.tag + "' "
+            + "order by tagged.position,tagged.created,tagged.beets_id asc")
+         .then(idlist => {
+            return this._idToSong(idlist);
+         })
+         .then(songs => this.populateTags(songs))
+         .then(songs => {
+            return QUERY.makeQueryResult(args.tag, songs);
+         });
    },
    TagDelete: function(tag) {
-      var count = Tags.Delete(tag);
-      LOG.info("Tag " + tag + " no longer exists (had " + count + " tracks)");
-      this.saveTags();
-      return this.TagStatus();
-   },
-   UpdateTagTracksToLatestFields: function() {
-      var This = this;
-      var p = Promise.resolve(true);
-      Tags.tags.forEach(
-            t =>
-            {
-               t.entries.forEach(
-               e =>
-               {
-                  p = p.then(
-                        () =>
-                        {
-                           return This.UpdateSongWithLatestFields(e.song);
-                        });
-               });
-            });
-      return p.then(() => { This.saveTags(); return "OK"; });
-   },
-   RefreshSongTags: function(songs) {
-      Tags.RefreshSongs(songs);
-   },
-   saveTags: function() {
-      var file = fs.createWriteStream(tagsFile, { flags: 'w', defaultEncoding: 'utf8' });
-      file.write(JSON.stringify(Tags, null, '  '));
+      return this._tagQuery("delete from tags where name = '" + tag + "'")
+         .then(() => this.TagStatus());
    },
    beetEocCallback: [],
-   outputBuffer: ""
+   outputBuffer: "",
+
+   _sqlQuery: function(dbpath, query, options) {
+      var sq3 = spawnAsync('sqlite3', [
+            '-separator', magicSeparator,
+            'file:' + dbpath + (options.readOnly? '?mode=ro' : ''),
+            query]);
+      sq3.stdout.setEncoding('utf8');
+      sq3.readline = readline.createInterface({ input: sq3.stdout });
+      if (options.onLine)
+         sq3.readline.on('line', options.onLine);
+      if (options.onClose) {
+         sq3.readline.on('close', options.onClose);
+      }
+      return sq3;
+   },
+   // given a where clause that selects the desired song(s), builds a song object
+   // out of the results
+   _beetSongQueryWhere: function(whereClause) {
+      return this._beetSongQuery("where " + whereClause);
+   },
+   _beetSongQuery: function(clauses) {
+      return new Promise((resolve, reject) => {
+         let objs = [];
+         let query = 'select artist,title,album,year,length,track,id,format,bitrate,path from items '
+            + clauses;
+         this._sqlQuery('/m/beetslibrary/beetslibrary.blb', query, {
+            readOnly: true,
+            onLine: l => objs.push(this.parseableFormatToSong(l)),
+            onClose: () => resolve(objs)
+         });
+      });
+   },
+   _beetRawQuery: function(query) {
+      return new Promise((resolve, reject) => {
+         let lines = [];
+         this._sqlQuery('/m/beetslibrary/beetslibrary.blb', query, {
+            readOnly: true,
+            onLine: l => lines.push(l),
+            onClose: () => resolve(lines)
+         });
+      });
+   },
+   _tagQuery: function(query) {
+      return new Promise((resolve, reject) => {
+         let lines = [];
+         let sq3 = this._sqlQuery('/m/meta/tags.sqlite3', query, {
+            onLine: l => lines.push(l),
+            onClose: () => resolve(lines)
+         });
+      });
+   },
+   _pathsClause: function(paths) {
+      let pathsClause = [];
+      if (Array.isArray(paths))
+         paths.forEach(p => {
+            if (p && p.length > 0) {
+               p = p.replace("'", "''");
+               pathsClause.push("path = x'" + this._hexify(p)  + "'")
+            };
+         });
+      else
+         pathsClause.push("path = x'" + this._hexify(paths) + "'");
+      return pathsClause.join(" or ");
+   },
+   _pathsToSongs: function(paths) {
+      if (!paths) return Promise.resolve(null);
+      return this._beetSongQueryWhere(this._pathsClause(paths));
+   },
+   _hexify: function(string) {
+      let ret = "";
+      for (let i = 0; i < string.length; ++i) {
+         ret += string.charCodeAt(i).toString(16);
+      }
+      return ret;
+   },
+   _pathsToIds: function(paths) {
+      if (!paths) return Promise.resolve(null);
+      return this._beetRawQuery("select id from items where " + this._pathsClause(paths));
+   },
+   // does a direct sqlite3 query against the beets database.
+   // Accepts an individual id or an array of ids.
+   // Always returns an array of song objects
+   _idToSong: function(id) {
+      if (!id) {
+         return Promise.resolve(null);
+      }
+      let idClause = [];
+      if (Array.isArray(id)) {
+         id.forEach(i => idClause.push(" id = " + i));
+      } else {
+         idClause.push('id = ' + id);
+      }
+      return this._beetSongQueryWhere(idClause.join(" or "));
+   },
+   populateTags: function(songs) {
+      let ids = [];
+      let lookup = {};
+      songs.forEach(s => {
+         ids.push(s.id);
+         s.tags = [];
+         lookup[s.id] = s;
+      });
+      const query =
+         "select tagged.beets_id,tags.name from tags "
+         + "join tagged on (" + this._or("tagged.beets_id = ", ids) + ") "
+         + "and tagged.tag_id = tags.id";
+      return this._tagQuery(query)
+         .then(lines => {
+            let count = 0;
+            lines.forEach(l => {
+               let split = l.split(magicSeparator);
+               if (split[0] in lookup) {
+                  lookup[split[0]].tags.push(split[1]);
+                  ++count;
+               }
+            });
+            return songs;
+         });
+   },
 };
 
 var _beet = (function() {
