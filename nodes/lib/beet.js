@@ -370,6 +370,93 @@ const beetProto = {
             return songs;
          });
    },
+   unzipFile: function(path, targetDir) {
+      return new Promise((resolve, reject) => {
+         console.log("Zip file at " + path + " -> " + targetDir);
+         let unzip = spawnAsync('unzip', ['-d', targetDir, path]);
+         unzip.on('exit', (code) => {
+            if (code !== 0) {
+               reject("unzip failed (code " + code + "): " + unzip.stderr);
+            }
+            console.log("unzipped " + path + " to " + targetDir);
+            resolve(targetDir);
+         });
+      });
+   },
+   importDirectory: function(dir) {
+      return new Promise((resolve, reject) => {
+         let beet_import = spawnAsync('bash', [ '/sb/s/torrentFinished.sh', dir]);
+         console.log("Running import on " + dir);
+         beet_import.stdout.on('data', (data) => {
+            console.log("IDOUT: " + data);
+         });
+         beet_import.stderr.on('data', (data) => {
+            console.log("IDERR: " + data);
+         });
+         beet_import.on('exit', (code) => {
+            if (code !== 0) {
+               console.log("Import failed: " + dir);
+               reject("importDirectory failed (code " + code + "): "
+                     + beet_import.stdout + "\n" + beet_import.stderr);
+               return;
+            }
+            console.log("Import successful: " + dir + "\n"
+                     + beet_import.stdout + "\n" + beet_import.stderr);
+            resolve(dir);
+         });
+      });
+   },
+   makeDirectory: function(dir) {
+      return new Promise((resolve, reject) => {
+         let mkdir = spawnAsync('mkdir', [ dir ]);
+         mkdir.on('exit', (code) => {
+            if (code !== 0) {
+               reject("mkdir failed (code " + code + "): " + dir + " "
+                     + beet_import.stdout + "\n" + beet_import.stderr);
+            }
+            console.log("mkdir " + dir);
+            resolve(dir);
+         });
+      });
+   },
+   moveFile: function(file, dest) {
+      return new Promise((resolve, reject) => {
+         let mkdir = spawnAsync('mv', [ file, dest ]);
+         mkdir.on('exit', (code) => {
+            if (code !== 0) {
+               reject("mv failed (code " + code + "): " + file + " -> " + dest + " "
+                     + beet_import.stdout + "\n" + beet_import.stderr);
+            }
+            console.log("mv " + file + " " + dest);
+            resolve(dest);
+         });
+      });
+   },
+   importFromFile: function(path, key, args) {
+      let setupDirPromise;
+      if (args.map.ext === 'zip') {
+         setupDirPromise = this.unzipFile(path, '/m/_incoming/' + key)
+      }
+      const exts = ['mp3', 'flac', 'm4a', 'alac'];
+      if (exts.indexOf(args.map.ext) >= 0) {
+         // make a directory and move the individual file into it.
+         setupDirPromise = this.makeDirectory('/m/_incoming/' + key)
+            .then(dir => this.moveFile(path, '/m/_incoming/' + key))
+      }
+      if (setupDirPromise) {
+         let p = setupDirPromise
+         .then(dir => this.importDirectory(dir))
+         .then(dir => {
+               // since we don't yet have a good way to retrieve only
+               // the songs just added, return the songs added today.
+               let d = new Date();
+               var q = "added:" + d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate() + ".. album+";
+               return this.Query(q);
+         });
+         return p;
+      }
+      throw "Unrecognized extension: " + args.map.ext;
+   }
 };
 
 var _beet = (function() {

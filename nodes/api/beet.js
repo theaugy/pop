@@ -1,6 +1,9 @@
 'use strict'
+const spawnAsync = require('child_process').spawn;
 const BEET = require('../lib/beet.js');
 const ARGS = require('../lib/args.js');
+const fs = require('fs');
+const LOG = require('../lib/log.js');
 const J = JSON.stringify;
 var beet = BEET.makeBeet();
 
@@ -82,6 +85,44 @@ module.exports = {
    },
    tagFetch: function(req, res) {
       beet.TagFetch(ARGS.buildArgs(req).map).then(r => JR(res, r));
+   },
+   // NOTE: this is a POST request (all others are GET)
+   postToLibrary: function(req, res) {
+      const args = ARGS.buildArgs(req);
+      const key = Math.random();
+      const tmpFile = "/m/_incoming/postToLibrary-file-" + key + "." + args.map.ext;
+      let file = fs.createWriteStream(tmpFile, { flags: 'w' });
+      let bytes = 0;
+      const max = 500 * 1024 * 1024;
+      if (req.body.length > max) {
+            LOG.warn("Incoming file exceeds max length of " + max + " (~500G)");
+            file.end();
+            fs.unlinkSync(tmpFile);
+            req.connection.destroy();
+            reject(37);
+      }
+      else {
+         LOG.info("Saving " + req.body.length + " bytes at " + tmpFile);
+      }
+      file.write(req.body);
+      file.end();
+      let songs;
+      try
+      {
+         beet.importFromFile(tmpFile, key, ARGS.buildArgs(req))
+            .then(songs => {
+               JR(res, songs);
+            });
+      }
+      catch (err)
+      {
+         LOG.warn("Error importing " + tmpFile + ": " + err);
+         res.writeHead(200, {'Content-type': 'text/plain' });
+         res.write("error: " + err);
+         res.end();
+         console.log("Cleaning up " + tmpFile);
+         spawnAsync('rm', ['-rf', tmpFile]);
+      }
    }
 }
 

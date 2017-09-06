@@ -1,7 +1,9 @@
+'use strict';
 const CMUS = require('./api/cmus.js');
 const BEET = require('./api/beet.js');
 const PL = require('./api/playlist.js');
 const TOOL = require('./api/tool.js');
+const fs = require("fs");
 
 // dispatch.js translates the REST endpoints into API calls.
 // Each API has a function with a name maching the REST endpoint.
@@ -21,6 +23,9 @@ module.exports = {
          const err = "API function not recognized: " + f;
          throw err;
       }
+   },
+   postToLibrary: function(req, res) {
+      return BEET.postToLibrary(req, res);
    }
 }
 

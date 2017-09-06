@@ -24,21 +24,9 @@ function makeQueueStatus(name, songList) {
 }
 
 function lastSevenQuery() {
-   var y = new Date().getFullYear();
-   var m = new Date().getMonth() + 1;
-   var d = new Date().getDate();
-   if (d <= 7) {
-      d = d + 28 - 7;
-      if (m == 1) {
-         y--;
-         m = 12;
-      } else {
-         m--;
-      }
-   } else {
-      d = d - 7;
-   }
-   var q = "added:" + y + "-" + m + "-" + d + ".. album+";
+   let d = Date.now();
+   d.setDate(d.getDate() - 7);
+   var q = "added:" + d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate() + ".. album+";
    return q;
 }
 

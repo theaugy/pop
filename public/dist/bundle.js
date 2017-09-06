@@ -898,6 +898,8 @@ var _Signals = (function () {
         this.deselectAllSongsEvent = new Events.Event("DeselectAllSongs");
         this.tagSelectedSongsEvent = new Events.Event("TagSelectedSongs");
         this.untagSelectedSongsEvent = new Events.Event("UntagSelectedSongs");
+        this.specifyTagSelectedSongsEvent = new Events.Event("SpecifyTagSelectedSongs");
+        this.specifyUntagSelectedSongsEvent = new Events.Event("SpecifyUntagSelectedSongs");
     }
     _Signals.prototype.trackShowByPath = function (p) {
         this.trackShowPath = p;
@@ -925,6 +927,14 @@ var _Signals = (function () {
     };
     _Signals.prototype.untagSelectedSongs = function () {
         this.untagSelectedSongsEvent.trigger();
+    };
+    _Signals.prototype.specifyTagSelectedSongs = function (tagName) {
+        this.specifyTagSelectedSongsTagName = tagName;
+        this.specifyTagSelectedSongsEvent.trigger();
+    };
+    _Signals.prototype.specifyUntagSelectedSongs = function (tagName) {
+        this.specifyUntagSelectedSongsTagName = tagName;
+        this.specifyUntagSelectedSongsEvent.trigger();
     };
     return _Signals;
 }());
@@ -4632,7 +4642,7 @@ var Song = (function (_super) {
             id: this.callbackId,
             cb: function () {
                 if (_this.state.selected) {
-                    Tags_1.default.selected.forEach(function (name) { return _this.addTag(name); });
+                    Tags_1.default.selected.forEach(function (name) { return Backend.Server.TagSong(Tags_1.default.getTag(name), _this.state.song); });
                     _this.setSelected(false);
                 }
             }
@@ -4642,6 +4652,26 @@ var Song = (function (_super) {
             cb: function () {
                 if (_this.state.selected) {
                     Tags_1.default.selected.forEach(function (name) { return Backend.Server.UntagSong(Tags_1.default.getTag(name), _this.state.song); });
+                    _this.setSelected(false);
+                }
+            }
+        });
+        Signals_1.default.specifyTagSelectedSongsEvent.addCallback({
+            id: this.callbackId,
+            cb: function () {
+                if (_this.state.selected) {
+                    var tag = Tags_1.default.getTag(Signals_1.default.specifyTagSelectedSongsTagName);
+                    Backend.Server.TagSong(tag, _this.state.song);
+                    _this.setSelected(false);
+                }
+            }
+        });
+        Signals_1.default.specifyUntagSelectedSongsEvent.addCallback({
+            id: this.callbackId,
+            cb: function () {
+                if (_this.state.selected) {
+                    var tag = Tags_1.default.getTag(Signals_1.default.specifyTagSelectedSongsTagName);
+                    Backend.Server.UntagSong(tag, _this.state.song);
                     _this.setSelected(false);
                 }
             }
@@ -4656,6 +4686,8 @@ var Song = (function (_super) {
         Signals_1.default.deselectAllSongsEvent.removeCallback(this.callbackId);
         Signals_1.default.tagSelectedSongsEvent.removeCallback(this.callbackId);
         Signals_1.default.untagSelectedSongsEvent.removeCallback(this.callbackId);
+        Signals_1.default.specifyTagSelectedSongsEvent.removeCallback(this.callbackId);
+        Signals_1.default.specifyUntagSelectedSongsEvent.removeCallback(this.callbackId);
     };
     Song.prototype._newState = function () {
         return {
@@ -4693,6 +4725,10 @@ var Song = (function (_super) {
     };
     Song.prototype.deleteTagAtIndex = function (i) {
         if (i >= 0 && i < this.state.song.tags.length) {
+            if (this.state.selected === true) {
+                Signals_1.default.specifyUntagSelectedSongs(this.state.song.tags[i].name);
+                return;
+            }
             Backend.Server.UntagSong(this.state.song.tags[i], this.state.song);
             this.setState(this._newState());
         }
@@ -4700,6 +4736,10 @@ var Song = (function (_super) {
     Song.prototype.addTag = function (name) {
         var tag = Tags_1.default.getTag(name);
         if (tag) {
+            if (this.state.selected === true) {
+                Signals_1.default.specifyTagSelectedSongs(name);
+                return;
+            }
             console.log("Tagging " + tag.name);
             Backend.Server.TagSong(tag, this.state.song);
             this.setState(this._newState());

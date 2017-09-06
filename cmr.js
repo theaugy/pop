@@ -103,6 +103,9 @@ dispatcher.onGet(/^\/dist/, function(req, res) {
    url.replace(/\.\./g, '__');
    dispatcher.serveFile("./" + url, req, res)
 });
+dispatcher.onPost(/^\/addToLibrary/, function (req, res) {
+   API.postToLibrary(req, res);
+});
 
 dispatcher.on('options', /.*/, function(req, res) {
    res.setHeader('Access-Control-Allow-Origin', 'null');

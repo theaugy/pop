@@ -41,7 +41,7 @@ module.exports = {
       {
          // assume, somewhat dangerously, that this is a POST request
          // and that the body contains newline-separated paths
-         req.body.split('\n').forEach(p => paths.push(p));
+         (req.body + "").split('\n').forEach(p => paths.push(p));
       }
       cmus.SetMainPlaylist(paths).then(() => {
             res.writeHead(200, {'Content-type': 'text/plain' });
