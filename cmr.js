@@ -18,13 +18,19 @@ function handleRequest(req, resp) {
    let rid = ++RequestId;
    try {
       let atStart = RequestsInFlight;
-      LOG.info("--- Request [" + rid + "] (" + atStart + "): " + tidyUrl(req));
+      const logPrefix = "Request[" + rid + "] " + req.method + " " + tidyUrl(req) + ": ";
+      LOG.info(logPrefix + "started; " + atStart + " other requests in flight ");
       RequestsMap[rid] = req;
       ++RequestsInFlight;
       resp.on('finish', () => {
          --RequestsInFlight;
          delete RequestsMap[rid];
-         LOG.info("--- Finish [" + rid + "] (" + RequestsInFlight + ", span " + (RequestId - rid) + "): " + tidyUrl(req));
+         LOG.info(logPrefix + "finished; inflight=" + RequestsInFlight
+               + ", span=" + (RequestId - rid)
+               + ", status=" + resp.statusCode
+               + ", statusMsg=" + resp.statusMessage
+               + ", headers=" + JSON.stringify(resp._headers)
+               );
       });
 
       if (req.url.indexOf('/stat') === 0) {
@@ -104,10 +110,12 @@ dispatcher.onGet(/^\/dist/, function(req, res) {
    dispatcher.serveFile("./" + url, req, res)
 });
 dispatcher.onPost(/^\/addToLibrary/, function (req, res) {
-   API.postToLibrary(req, res);
+   console.log("to api...");
+   API.addToLibrary(req, res);
 });
 
 dispatcher.on('options', /.*/, function(req, res) {
+   LOG.info("options headers:\n" + JSON.stringify(req.headers, null, '  '));
    res.setHeader('Access-Control-Allow-Origin', 'null');
    res.setHeader('Access-Control-Allow-Headers', 'content-type,Cache-Control');
 

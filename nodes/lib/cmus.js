@@ -24,7 +24,7 @@ function makeQueueStatus(name, songList) {
 }
 
 function lastSevenQuery() {
-   let d = Date.now();
+   let d = new Date();
    d.setDate(d.getDate() - 7);
    var q = "added:" + d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate() + ".. album+";
    return q;

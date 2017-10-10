@@ -4,6 +4,7 @@ var log_targetFile = "/tmp/cmr.log"
 
 module.exports = {
    raw: function(msg) {
+      console.log(msg);
       fs.appendFile(this.target, msg + "\n");
    },
    info: function(msg) {

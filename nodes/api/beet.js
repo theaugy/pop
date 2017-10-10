@@ -87,13 +87,13 @@ module.exports = {
       beet.TagFetch(ARGS.buildArgs(req).map).then(r => JR(res, r));
    },
    // NOTE: this is a POST request (all others are GET)
-   postToLibrary: function(req, res) {
+   addToLibrary: function(req, res) {
       const args = ARGS.buildArgs(req);
       const key = Math.random();
-      const tmpFile = "/m/_incoming/postToLibrary-file-" + key + "." + args.map.ext;
+      const tmpFile = "/m/_incoming/addToLibrary-file-" + key + "." + args.map.ext;
       let file = fs.createWriteStream(tmpFile, { flags: 'w' });
       let bytes = 0;
-      const max = 500 * 1024 * 1024;
+      const max = 500 * 1024 * 1024 * 1024;
       if (req.body.length > max) {
             LOG.warn("Incoming file exceeds max length of " + max + " (~500G)");
             file.end();

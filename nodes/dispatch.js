@@ -24,8 +24,9 @@ module.exports = {
          throw err;
       }
    },
-   postToLibrary: function(req, res) {
-      return BEET.postToLibrary(req, res);
+   addToLibrary: function(req, res) {
+      console.log("into dispatch");
+      return BEET.addToLibrary(req, res);
    }
 }
 
